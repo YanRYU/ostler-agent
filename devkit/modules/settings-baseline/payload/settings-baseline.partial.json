@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "allow": [],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./secrets/**)",
+      "Write(./.env)",
+      "Write(./.env.*)",
+      "Bash(rm :*)",
+      "Bash(rm -r :*)",
+      "Bash(rm -f :*)",
+      "Bash(rm -rf :*)",
+      "Bash(rm -fr :*)",
+      "Bash(mkfs:*)",
+      "Bash(dd if=:*)",
+      "Bash(chmod -R 777:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git clean:*)",
+      "Write(/etc/**)",
+      "Edit(/etc/**)",
+      "Write(/usr/**)",
+      "Edit(/usr/**)",
+      "Write(/bin/**)",
+      "Edit(/bin/**)",
+      "Write(/sbin/**)",
+      "Edit(/sbin/**)",
+      "Write(/System/**)",
+      "Edit(/System/**)"
+    ],
+    "ask": [
+      "Bash(sudo:*)",
+      "Bash(curl:*)",
+      "Bash(wget:*)",
+      "Bash(git push:*)",
+      "Bash(npm publish:*)"
+    ],
+    "defaultMode": "default",
+    "additionalDirectories": []
+  }
+}

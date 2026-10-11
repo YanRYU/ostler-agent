@@ -1,0 +1,146 @@
+{
+  "allowlist_sha256": "93175c99d3878283b807027c3dd68e49b44c291495a0e7ddce305a1095957451",
+  "files": [
+    {
+      "mode": "0644",
+      "path": "LICENSE",
+      "sha256": "20a2ca46b57b6c523e0ee630151747fdabbb2bb8d0250bf759ae173d9c7f0308"
+    },
+    {
+      "mode": "0644",
+      "path": "README.md",
+      "sha256": "9d6ddfab0a83c54d12d854ee2c695f69409ed672522b4d8afaa80e416d19e8d0"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/README.md",
+      "sha256": "d5d180429747cecf05df169db312384fa963a46e808f53c3863e26a182620840"
+    },
+    {
+      "mode": "0755",
+      "path": "devkit/install/_devkit.py",
+      "sha256": "9bb44ad67a7aabbc0eda5fd410a15b24cdc3743136656ad5dceb2eb5637671e3"
+    },
+    {
+      "mode": "0755",
+      "path": "devkit/install/devkit-install.sh",
+      "sha256": "c119a7f171effa65a32af30545616af305f4b3cb3635336cf6ad7392f6d3614d"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/modules/audit/MODULE.md",
+      "sha256": "afc66505f3558d024b63bb547641f18b4d53744a842bf876e7234a7ef97329fa"
+    },
+    {
+      "mode": "0755",
+      "path": "devkit/modules/audit/payload/devkit-audit.py",
+      "sha256": "3d22ed9262401787126e4b423255635f76100af28be3e41e42662d82a750a104"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/modules/claude-md-kernel/MODULE.md",
+      "sha256": "8d64800188f993150c9cd1569474bb3704d6592fd8dee93f6cb65fc3698c3626"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/modules/claude-md-kernel/payload/CLAUDE.md",
+      "sha256": "3fecd4da1af14844ebdb89e9fda69ab5545072cc833e74180edcf07bc739006f"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/modules/hooks-core/MODULE.md",
+      "sha256": "48705da81831127202198a4eda9eba4dd72826c7e86203d6b5ddd8c20b4a52cd"
+    },
+    {
+      "mode": "0755",
+      "path": "devkit/modules/hooks-core/payload/hooks/branch-similarity-check.sh",
+      "sha256": "d4a33a5926a814a3efcefa13273d6a3ed4104967cbe4e063bf89c17630339b9e"
+    },
+    {
+      "mode": "0755",
+      "path": "devkit/modules/hooks-core/payload/hooks/personal-path-guard.py",
+      "sha256": "4763f5e08176d391c20e14d3e7e51339debd0e3f45bc7ab14265cec39cf8609d"
+    },
+    {
+      "mode": "0755",
+      "path": "devkit/modules/hooks-core/payload/hooks/plan-exit-print-location.sh",
+      "sha256": "203400fe4434c55bb54b63d899bed030f5d8a465275a66be3ffb7849bb1979a6"
+    },
+    {
+      "mode": "0755",
+      "path": "devkit/modules/hooks-core/payload/hooks/stash-leak-check.sh",
+      "sha256": "24f63f05c2c7b3a8d8a4fd30fc15515f07ce6061f0301823bd7543ddc3819c61"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/modules/rules-core/MODULE.md",
+      "sha256": "54b288eb5892f162144482da8c49a05c7298e96773b6b4e6d4a42ae4266e809b"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/modules/rules-core/payload/rules/git-hygiene.md",
+      "sha256": "5281f1cb5096c5fbcb41110f1d68b385952fec9860e9ce0f294ec5c4407c60bb"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/modules/rules-core/payload/rules/plan-writing.md",
+      "sha256": "d96151f89b4586533b077e4024842886e374e61a5501e3f79a6ab4a2f9408026"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/modules/rules-core/payload/rules/privacy.md",
+      "sha256": "5d16010cc9a295944f6e7be2cdbd240b5198686bd25a93b5ba039179e84eb623"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/modules/rules-core/payload/rules/self-contained-agents.md",
+      "sha256": "5ab3bd95126238d14db0363a9ece345adc59e44d00c950de0437f0f83d3c3fdd"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/modules/settings-baseline/MODULE.md",
+      "sha256": "67ef7ab32db323c96a6af358bf55fc7b51052e2884bf67b2a8fe275f7f0d4a1c"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/modules/settings-baseline/payload/settings-baseline.partial.json",
+      "sha256": "0aa47de2b920ed1e47bcc0bfedafe7924d652beb42ad1b16eb1cb2033f415349"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/modules/skill-template/MODULE.md",
+      "sha256": "4f8a17d64bc6fe7825082efdc87d71eb0f70eda87326cf42e9b2044507254dc1"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/modules/skill-template/payload/SKILL.md",
+      "sha256": "ccd4ac76355ee1f119507a046dfb5e1c3629cf594300c321a1d0bc2e321a404b"
+    },
+    {
+      "mode": "0755",
+      "path": "devkit/tests/test-devkit-feedback.sh",
+      "sha256": "49493a5d9a52e12ee359f8650929dafa2d3900e9d201ff3bbd4f82dbdde15fcb"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/tests/test-personal-path-guard.sh",
+      "sha256": "934761b13d11e5ddf90fa936ed8854b09043763eed1ab13066d433d45b528ac3"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/tests/test-txn.sh",
+      "sha256": "e4c1955d0581381ceb5b5fbfe0cdc80b7f948ea7794707c3a63a82377c5b3199"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/tests/test_txn.py",
+      "sha256": "bfeb0974e2d1c67e093949d9655a5900a8cdd739f52406b6411923ed94d32653"
+    },
+    {
+      "mode": "0644",
+      "path": "install/lib/txn.py",
+      "sha256": "69762a8c91ee8b8262202047b2d92c92b086642a95a87c294603a69e7147db83"
+    }
+  ],
+  "schema_version": 1
+}
