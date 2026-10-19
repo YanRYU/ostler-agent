@@ -631,11 +631,16 @@ def install(target: Path, modules: list[str], force: bool, allow_dirty: bool = F
     order = topo_order(modules, mods)
     print(f"[devkit] install order: {order}")
     if PLATFORM == "codex" and "codex-hooks-core" in order:
-        root = subprocess.run(["git", "-C", str(target), "rev-parse", "--show-toplevel"],
-                              capture_output=True, text=True)
-        if root.returncode or Path(root.stdout.strip()).resolve() != target:
+        try:
+            root = subprocess.run(["git", "-C", str(target), "rev-parse", "--show-toplevel"],
+                                  capture_output=True, text=True)
+            is_root = root.returncode == 0 and os.path.samefile(root.stdout.strip(), target)
+        except OSError:
+            is_root = False
+        if not is_root:
             print("[devkit] ERROR: Codex hooks require the target to be a Git repository root. "
-                  "Run git init there before installing codex-hooks-core.", file=sys.stderr)
+                  "Check that Git is installed and run git init there before installing "
+                  "codex-hooks-core.", file=sys.stderr)
             return 8
     if os.path.lexists(target) and not target.is_dir():
         print(f"[devkit] ERROR: target {target} exists and is not a directory", file=sys.stderr)
@@ -655,8 +660,9 @@ def install(target: Path, modules: list[str], force: bool, allow_dirty: bool = F
             return _print_errors(plan), None
         if plan.conflicts:
             _print_refusals(plan, target)
-            print(f"[devkit] {len(plan.conflicts)} file(s) refused (modified/unmanaged). "
-                  "Nothing was written. Re-run with --force to overwrite.")
+            print(f"[devkit] {len(plan.conflicts)} file(s) refused. "
+                  "Nothing was written. --force only overrides modified or unmanaged files; "
+                  "resolve module ownership conflicts separately.")
             return 3, None
         manifest = build_manifest(prior, installs, plan.dropped, commit, dirty)
         if not plan.ops and _meaningful(manifest) == _meaningful(prior):

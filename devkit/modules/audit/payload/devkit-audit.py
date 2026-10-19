@@ -343,6 +343,8 @@ def check_enforcement_gaps(target: Path) -> None:
     if config_path.is_file():
         try:
             config = json.loads(config_path.read_text())
+            if not isinstance(config, dict):
+                raise ValueError("config is not an object")
             events = config.get("hooks", {})
             if not isinstance(events, dict):
                 raise ValueError("hooks is not an object")

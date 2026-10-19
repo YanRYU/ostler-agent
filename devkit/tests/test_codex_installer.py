@@ -3,12 +3,14 @@ from __future__ import annotations
 
 import json
 import hashlib
+import io
 import os
 import runpy
 import shutil
 import subprocess
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
 
 
@@ -316,6 +318,27 @@ class CodexHookTests(unittest.TestCase):
             self.assertIn("Git repository root", result.stderr)
             self.assertFalse(target.exists())
 
+    def test_hooks_accept_target_with_different_path_case_on_case_insensitive_disk(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "CaseRepo"
+            self.make_repo(target)
+            alternate = target.with_name("caserepo")
+            if not alternate.exists() or not os.path.samefile(target, alternate):
+                self.skipTest("requires a case-insensitive filesystem")
+            result = run_installer(CODEX, "install", str(alternate), "codex-hooks-core", "--allow-dirty")
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_audit_reports_non_object_hook_config_without_crashing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp)
+            codex = target / ".codex"
+            codex.mkdir()
+            (codex / "hooks.json").write_text("[]\n")
+            output = io.StringIO()
+            with redirect_stdout(output):
+                runpy.run_path(str(AUDIT))["check_enforcement_gaps"](target)
+            self.assertIn("config is not an object", output.getvalue())
+
     def test_hook_command_exits_cleanly_if_git_root_unavailable(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             config = json.loads((HOOKS.parent / "hooks.json").read_text())
@@ -388,6 +411,8 @@ class MixedInstallTests(unittest.TestCase):
             ]}}
             plan, _ = installer["build_install_plan"](target, ["codex-collision"], mods, prior, False)
             self.assertTrue(any("managed-by-other-module" in issue for issue in plan.conflicts), plan.conflicts)
+            forced, _ = installer["build_install_plan"](target, ["codex-collision"], mods, prior, True)
+            self.assertTrue(any("managed-by-other-module" in issue for issue in forced.conflicts), forced.conflicts)
 
     def test_codex_wrapper_cannot_remove_claude_module(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
