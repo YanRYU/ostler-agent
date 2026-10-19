@@ -66,6 +66,7 @@ FORK_MARKER = "devkit:" + "forked"  # split so installer source isn't self-flagg
 FACTORY = Path(__file__).resolve().parent.parent          # .../devkit
 MODULES_DIR = FACTORY / "modules"
 AUDIT_SCRIPT = MODULES_DIR / "audit" / "payload" / "devkit-audit.py"
+PLATFORM = "claude"
 
 # Transaction library (install/lib/txn.py), found relative to this file:
 # <repo>/devkit/install/_devkit.py -> <repo>/install/lib
@@ -714,6 +715,8 @@ def _outdated_locked(target: Path) -> int:
     mods = discover_modules()
     for inst in manifest.get("installs", []):
         name = inst.get("module", "?")
+        if (name.startswith("codex-")) != (PLATFORM == "codex"):
+            continue
         have = inst.get("fingerprint")
         if name not in mods:
             print(f"devkit: {name} outdated (module no longer exists in the factory)")
@@ -814,7 +817,9 @@ def check(target: Path) -> int:
 
 
 def main() -> int:
+    global MODULES_DIR, PLATFORM
     ap = argparse.ArgumentParser(prog="devkit-install")
+    ap.add_argument("--platform", choices=("claude", "codex"), default="claude")
     sub = ap.add_subparsers(dest="cmd", required=True)
     pi = sub.add_parser("install")
     pi.add_argument("target")
@@ -837,6 +842,8 @@ def main() -> int:
     pv = sub.add_parser("recover")
     pv.add_argument("target")
     args = ap.parse_args()
+    PLATFORM = args.platform
+    MODULES_DIR = FACTORY / ("codex-modules" if PLATFORM == "codex" else "modules")
 
     target = Path(args.target).expanduser().resolve()
     try:
