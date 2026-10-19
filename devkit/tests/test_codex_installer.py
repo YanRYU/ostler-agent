@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import runpy
 import subprocess
 import tempfile
 import unittest
@@ -203,6 +204,19 @@ class CodexHookTests(unittest.TestCase):
             self.assertEqual(ignored.returncode, 0, ignored.stderr)
             self.assertEqual(ignored.stdout, "")
 
+    def test_path_hook_checks_repository_codex_config(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp)
+            self.make_repo(target)
+            payload = {
+                "hook_event_name": "PreToolUse", "tool_name": "apply_patch",
+                "tool_input": {"command": "*** Begin Patch\n*** Add File: .codex/config.toml\n+path = '/Users/alice/secret'\n*** End Patch\n"},
+                "cwd": str(target),
+            }
+            result = self.run_hook("personal_path_guard.py", target, payload)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn(".codex/config.toml", json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"])
+
     def test_hooks_install_with_valid_codex_config_and_activation_message(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             target = Path(tmp) / "repo"
@@ -213,6 +227,18 @@ class CodexHookTests(unittest.TestCase):
             self.assertIn("PostToolUse", config["hooks"])
             self.assertIn("/hooks", result.stdout)
             self.assertIn("trust", result.stdout.lower())
+
+    def test_invalid_nested_hook_config_is_rejected_by_preflight(self) -> None:
+        installer = runpy.run_path(str(ROOT / "devkit" / "install" / "_devkit.py"))
+        validate = installer["validate_codex_hooks"]
+        config = {"hooks": {"PreToolUse": [{"matcher": "[", "hooks": [{"type": "command", "command": "echo ok"}]}],
+                            "PostToolUse": [{"matcher": "Bash", "hooks": [{"type": "command", "command": "echo ok"}]}]}}
+        with self.assertRaises(ValueError):
+            validate(json.dumps(config).encode())
+        config["hooks"]["PreToolUse"][0]["matcher"] = "Bash"
+        config["hooks"]["PostToolUse"][0]["hooks"][0]["command"] = ""
+        with self.assertRaises(ValueError):
+            validate(json.dumps(config).encode())
 
 
 class MixedInstallTests(unittest.TestCase):

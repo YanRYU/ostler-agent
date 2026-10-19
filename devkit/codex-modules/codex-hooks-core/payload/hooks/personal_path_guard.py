@@ -20,7 +20,7 @@ def shared(cwd, path):
         rel = candidate.relative_to(root)
     except (OSError, subprocess.CalledProcessError, ValueError):
         return False
-    if any(part in (".git", ".codex") for part in rel.parts):
+    if ".git" in rel.parts:
         return False
     ignored = subprocess.run(["git", "check-ignore", "-q", "--", str(rel)], cwd=root, capture_output=True)
     return ignored.returncode != 0

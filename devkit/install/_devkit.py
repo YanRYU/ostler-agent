@@ -53,6 +53,7 @@ import hashlib
 import io
 import json
 import os
+import re
 import shlex
 import subprocess
 import sys
@@ -97,6 +98,34 @@ _TXN_KEY = _norm(TXN_DIRNAME)
 def _is_reserved(dest_rel: str) -> bool:
     key = _norm(dest_rel)
     return key in _RESERVED_KEYS or key.split("/", 1)[0] == _TXN_KEY
+
+
+def validate_codex_hooks(raw: bytes) -> None:
+    """Reject malformed project hooks before the transaction can write anything."""
+    config = json.loads(raw)
+    if not isinstance(config, dict) or not isinstance(config.get("hooks"), dict):
+        raise ValueError("hooks must be an object")
+    events = config["hooks"]
+    for event in ("PreToolUse", "PostToolUse"):
+        groups = events.get(event)
+        if not isinstance(groups, list) or not groups:
+            raise ValueError(f"{event} must be a non-empty list")
+        for group in groups:
+            if not isinstance(group, dict) or not isinstance(group.get("matcher"), str):
+                raise ValueError(f"{event} group needs a matcher string")
+            try:
+                re.compile(group["matcher"])
+            except re.error as e:
+                raise ValueError(f"{event} invalid matcher: {e}") from e
+            handlers = group.get("hooks")
+            if not isinstance(handlers, list) or not handlers:
+                raise ValueError(f"{event} group needs a non-empty hooks list")
+            for handler in handlers:
+                if not isinstance(handler, dict) or handler.get("type") != "command" or not isinstance(handler.get("command"), str) or not handler["command"].strip():
+                    raise ValueError(f"{event} handler needs a command")
+                timeout = handler.get("timeout", 600)
+                if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or timeout <= 0:
+                    raise ValueError(f"{event} handler needs a positive timeout")
 
 
 def _same_file(a: Path, b: Path) -> bool:
@@ -387,13 +416,8 @@ def build_install_plan(target: Path, order: list[str], mods: dict[str, dict],
             src_bytes = src.read_bytes()
             if PLATFORM == "codex" and dest_rel == ".codex/hooks.json":
                 try:
-                    hook_config = json.loads(src_bytes)
-                    events = hook_config["hooks"]
-                    if not isinstance(events, dict) or not all(
-                        isinstance(events.get(event), list) for event in ("PreToolUse", "PostToolUse")
-                    ):
-                        raise ValueError("missing PreToolUse or PostToolUse hook list")
-                except (ValueError, KeyError, TypeError) as e:
+                    validate_codex_hooks(src_bytes)
+                except ValueError as e:
                     plan.errors.append(f"{name}: invalid Codex hook config: {e}")
                     continue
             src_sha = txn.sha256_bytes(src_bytes)
