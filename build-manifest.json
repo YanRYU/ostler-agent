@@ -1,5 +1,5 @@
 {
-  "allowlist_sha256": "93175c99d3878283b807027c3dd68e49b44c291495a0e7ddce305a1095957451",
+  "allowlist_sha256": "8fd43ebd80a67ad89cc777bb55a760ed6166bc0c018746e6cc9bf62c7a6f4c10",
   "files": [
     {
       "mode": "0644",
@@ -9,112 +9,227 @@
     {
       "mode": "0644",
       "path": "README.md",
-      "sha256": "9d6ddfab0a83c54d12d854ee2c695f69409ed672522b4d8afaa80e416d19e8d0"
+      "sha256": "938c23afa822b7dc10c29c3e4dbf3ea4d875cf27d4b49a6943387bd8ebd3a3d0"
     },
     {
       "mode": "0644",
       "path": "devkit/README.md",
-      "sha256": "d5d180429747cecf05df169db312384fa963a46e808f53c3863e26a182620840"
+      "sha256": "4bb0723b752b681473670883424c1ef112d6eb3c34358477987e2ef5a0921311"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/domains.json",
+      "sha256": "113d224fb2f32f2783c11146801799783d8497241d3b0ae7bcd82084bc1203f0"
     },
     {
       "mode": "0755",
       "path": "devkit/install/_devkit.py",
-      "sha256": "9bb44ad67a7aabbc0eda5fd410a15b24cdc3743136656ad5dceb2eb5637671e3"
+      "sha256": "4a481a5422ccc95c74a3e6bfc4bf3b5a2df6aab1059dcaf4bc4a5b559b71180e"
     },
     {
       "mode": "0755",
       "path": "devkit/install/devkit-install.sh",
-      "sha256": "c119a7f171effa65a32af30545616af305f4b3cb3635336cf6ad7392f6d3614d"
+      "sha256": "a95ba858ea5b2f1e1e7b46564a3dd0112f9b72ad7b113ad29e8d5ab2084393b8"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/install/modtable.py",
+      "sha256": "b83160865c0ed952aacb94a386f5e1ae313180ffebaafe9e9da5e1a0be5922ea"
     },
     {
       "mode": "0644",
       "path": "devkit/modules/audit/MODULE.md",
-      "sha256": "afc66505f3558d024b63bb547641f18b4d53744a842bf876e7234a7ef97329fa"
+      "sha256": "38759f28045b4bf444018500dd871694ed4905fe1170718ba23a270d0c022d2e"
     },
     {
       "mode": "0755",
       "path": "devkit/modules/audit/payload/devkit-audit.py",
-      "sha256": "3d22ed9262401787126e4b423255635f76100af28be3e41e42662d82a750a104"
+      "sha256": "f47da3125d7104b66d31cf0155225942a6d3bc658ff5983a5db3076b29b90176"
     },
     {
       "mode": "0644",
       "path": "devkit/modules/claude-md-kernel/MODULE.md",
-      "sha256": "8d64800188f993150c9cd1569474bb3704d6592fd8dee93f6cb65fc3698c3626"
+      "sha256": "9e9858af7473f25d734860f03c0ebea0556383788f5aa0bc10e5eb40b74cde4b"
     },
     {
       "mode": "0644",
       "path": "devkit/modules/claude-md-kernel/payload/CLAUDE.md",
-      "sha256": "3fecd4da1af14844ebdb89e9fda69ab5545072cc833e74180edcf07bc739006f"
+      "sha256": "168139cf254b777df22bb0524db89e4c7d3346ba8db142c08eece8bf2276609b"
     },
     {
       "mode": "0644",
-      "path": "devkit/modules/hooks-core/MODULE.md",
-      "sha256": "48705da81831127202198a4eda9eba4dd72826c7e86203d6b5ddd8c20b4a52cd"
+      "path": "devkit/modules/decision-gating-business/MODULE.md",
+      "sha256": "251593d621134e0c2b9737d4fe1872607fa2e05207b02ad49ebf56fef1efb7fb"
     },
     {
       "mode": "0755",
-      "path": "devkit/modules/hooks-core/payload/hooks/branch-similarity-check.sh",
+      "path": "devkit/modules/decision-gating-business/payload/hooks/outcome-block-check.sh",
+      "sha256": "ee46ace4ef05ea337db12faaa8f775d760e01c6471f59266333efd44f1ae0851"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/modules/decision-gating-business/payload/rules/biz-outcome-gate.md",
+      "sha256": "97e8973ca0191f133ab0e6da3ccbba302438ff44ed3461cb405e74728e2acf40"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/modules/decision-gating-technical/MODULE.md",
+      "sha256": "432fcb8b32b6d9a79b9711625929571e4ed85184090d29a8e20f3dcd2cb6d8d1"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/modules/decision-gating-technical/payload/rules/technical-gate.md",
+      "sha256": "3f020c7cccb6e9b1a1b2f2d0c0d2b1b2780f8e5bdd0a859d9ef7dc07714fb91d"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/modules/git-multi-session/MODULE.md",
+      "sha256": "45c750df5455411f905a91d8f7c850516c8e258181358f1ac036d58eea6d1fd7"
+    },
+    {
+      "mode": "0755",
+      "path": "devkit/modules/git-multi-session/payload/hooks/branch-similarity-check.sh",
       "sha256": "d4a33a5926a814a3efcefa13273d6a3ed4104967cbe4e063bf89c17630339b9e"
     },
     {
       "mode": "0755",
-      "path": "devkit/modules/hooks-core/payload/hooks/personal-path-guard.py",
-      "sha256": "4763f5e08176d391c20e14d3e7e51339debd0e3f45bc7ab14265cec39cf8609d"
-    },
-    {
-      "mode": "0755",
-      "path": "devkit/modules/hooks-core/payload/hooks/plan-exit-print-location.sh",
-      "sha256": "203400fe4434c55bb54b63d899bed030f5d8a465275a66be3ffb7849bb1979a6"
-    },
-    {
-      "mode": "0755",
-      "path": "devkit/modules/hooks-core/payload/hooks/stash-leak-check.sh",
+      "path": "devkit/modules/git-multi-session/payload/hooks/stash-leak-check.sh",
       "sha256": "24f63f05c2c7b3a8d8a4fd30fc15515f07ce6061f0301823bd7543ddc3819c61"
     },
     {
       "mode": "0644",
-      "path": "devkit/modules/rules-core/MODULE.md",
-      "sha256": "54b288eb5892f162144482da8c49a05c7298e96773b6b4e6d4a42ae4266e809b"
+      "path": "devkit/modules/git-multi-session/payload/rules/git-hygiene.md",
+      "sha256": "7eafadd8dcea6055610b9f8658502460731e8c8ce8e73884f5fba3a2665b17c7"
     },
     {
       "mode": "0644",
-      "path": "devkit/modules/rules-core/payload/rules/git-hygiene.md",
-      "sha256": "5281f1cb5096c5fbcb41110f1d68b385952fec9860e9ce0f294ec5c4407c60bb"
+      "path": "devkit/modules/harness-governance/MODULE.md",
+      "sha256": "7b99a6b8a3db8284afe6fd5943cd35f03ec1df1d3bd3a7519824f25960b08f25"
     },
     {
       "mode": "0644",
-      "path": "devkit/modules/rules-core/payload/rules/plan-writing.md",
-      "sha256": "d96151f89b4586533b077e4024842886e374e61a5501e3f79a6ab4a2f9408026"
+      "path": "devkit/modules/harness-governance/payload/harness-registry/_schema.json",
+      "sha256": "92da20cba1d5e471d6308afec2a4918db5d18433193278ee16fd3a575373ed3d"
     },
     {
       "mode": "0644",
-      "path": "devkit/modules/rules-core/payload/rules/privacy.md",
+      "path": "devkit/modules/harness-governance/payload/rules/harness-governance.md",
+      "sha256": "885226cc75bbf4f8b55228fe286e346d621fc177979a6d30c355ccea65b5bc0b"
+    },
+    {
+      "mode": "0755",
+      "path": "devkit/modules/harness-governance/payload/scripts/harness-audit/diff-registry.py",
+      "sha256": "2977ecdc7af49fc354ef40e8b440bd7bf14caa46e5b1410db24258176d916303"
+    },
+    {
+      "mode": "0755",
+      "path": "devkit/modules/harness-governance/payload/scripts/harness-audit/registry.py",
+      "sha256": "e58d6f5887f69c18c430c956bd53a6a50b7f98c114f264126512caf7b417e353"
+    },
+    {
+      "mode": "0755",
+      "path": "devkit/modules/harness-governance/payload/scripts/harness-audit/scan.sh",
+      "sha256": "bbba93c667a7540ca34cf9c62fc79368dec18f13dfc0f62fdde884f2cd4a2a9a"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/modules/harness-governance/payload/skills/harness-audit/SKILL.md",
+      "sha256": "520a109ba42b0ccfc245e1a9cc9638bbe45a9a4161dafa2b2c36e423500bd9e6"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/modules/observe/MODULE.md",
+      "sha256": "ccbc80b2c0b08b3c1cacea3fd4ce31add1a03cd706c3b166d3111f096c32ac64"
+    },
+    {
+      "mode": "0755",
+      "path": "devkit/modules/observe/payload/hooks/plan-exit-print-location.sh",
+      "sha256": "203400fe4434c55bb54b63d899bed030f5d8a465275a66be3ffb7849bb1979a6"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/modules/secrets-privacy/MODULE.md",
+      "sha256": "8601d088846a791040c9d68232b90d523db6eff9c4e5c277dddb97ded8567bb9"
+    },
+    {
+      "mode": "0755",
+      "path": "devkit/modules/secrets-privacy/payload/hooks/personal-path-guard.py",
+      "sha256": "4763f5e08176d391c20e14d3e7e51339debd0e3f45bc7ab14265cec39cf8609d"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/modules/secrets-privacy/payload/rules/privacy.md",
       "sha256": "5d16010cc9a295944f6e7be2cdbd240b5198686bd25a93b5ba039179e84eb623"
     },
     {
       "mode": "0644",
-      "path": "devkit/modules/rules-core/payload/rules/self-contained-agents.md",
-      "sha256": "5ab3bd95126238d14db0363a9ece345adc59e44d00c950de0437f0f83d3c3fdd"
-    },
-    {
-      "mode": "0644",
-      "path": "devkit/modules/settings-baseline/MODULE.md",
-      "sha256": "67ef7ab32db323c96a6af358bf55fc7b51052e2884bf67b2a8fe275f7f0d4a1c"
-    },
-    {
-      "mode": "0644",
-      "path": "devkit/modules/settings-baseline/payload/settings-baseline.partial.json",
-      "sha256": "0aa47de2b920ed1e47bcc0bfedafe7924d652beb42ad1b16eb1cb2033f415349"
+      "path": "devkit/modules/secrets-privacy/payload/settings-secrets-privacy.partial.json",
+      "sha256": "4b70392f145f8b64acb6255d2a989e1b068231a6aa424f2f5b5065573889ddc1"
     },
     {
       "mode": "0644",
       "path": "devkit/modules/skill-template/MODULE.md",
-      "sha256": "4f8a17d64bc6fe7825082efdc87d71eb0f70eda87326cf42e9b2044507254dc1"
+      "sha256": "be7ded5c27dccc3ac1fc311cdc8d573d77845f3f35ec81879d336874f6e99116"
     },
     {
       "mode": "0644",
       "path": "devkit/modules/skill-template/payload/SKILL.md",
-      "sha256": "ccd4ac76355ee1f119507a046dfb5e1c3629cf594300c321a1d0bc2e321a404b"
+      "sha256": "f1c5485d35bbee0f9d915ee2e118336ab798407309e4d69afc51ff63731d40e7"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/modules/system-safety/MODULE.md",
+      "sha256": "62944a7ee8e1948044ae279e75d85fc2ace8011e92b6af1987cea310a381c21c"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/modules/system-safety/payload/settings-system-safety.partial.json",
+      "sha256": "5b34fcc23a15faf9e4556e450d468e0a64f1e60ea8f076eb8ccbbfcd0d3ec910"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/modules/work-craft/MODULE.md",
+      "sha256": "dc32dbc39b54b6e6427cf69b24522ea712b0a587fa03240f44f1aef85e54e88a"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/modules/work-craft/payload/rules/communication-style.md",
+      "sha256": "923f971b08c2ac2de333490bf1a943df8bfc20aa654ac9f38c24cd53be016a70"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/modules/work-craft/payload/rules/output-quality-standards.md",
+      "sha256": "04ca80331155329698b88f3233c92878c2685b8acfd00384f51295391264ca8c"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/modules/work-craft/payload/rules/plan-writing.md",
+      "sha256": "d96151f89b4586533b077e4024842886e374e61a5501e3f79a6ab4a2f9408026"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/modules/work-craft/payload/rules/self-contained-agents.md",
+      "sha256": "5ab3bd95126238d14db0363a9ece345adc59e44d00c950de0437f0f83d3c3fdd"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/tests/fixtures/plan-no-outcome.md",
+      "sha256": "2a37b1aea8708fb36b757033b51564a1efdbb7cc5e5e8663f096a63e4fb71170"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/tests/fixtures/plan-with-outcome.md",
+      "sha256": "bdd91c898bebb8b2ba23d9d783b9a9649d78f4d6d8750a0f60051a4f595bcf9c"
+    },
+    {
+      "mode": "0755",
+      "path": "devkit/tests/test-contract-v2.sh",
+      "sha256": "a93d9e667daf51dc3f108c580943fb277f7ac8b4f195cb4de89e329d8355bf95"
+    },
+    {
+      "mode": "0755",
+      "path": "devkit/tests/test-decision-gating.sh",
+      "sha256": "6b2afbab43a8cd45864edffb843541b0ecdd213e285aed6d8faa8555c21add72"
     },
     {
       "mode": "0755",
@@ -122,19 +237,59 @@
       "sha256": "49493a5d9a52e12ee359f8650929dafa2d3900e9d201ff3bbd4f82dbdde15fcb"
     },
     {
+      "mode": "0755",
+      "path": "devkit/tests/test-harness-governance.sh",
+      "sha256": "767ecac480377e2a95e1029451aeae60a16976d523bd063a3ec6d813711c94ca"
+    },
+    {
+      "mode": "0755",
+      "path": "devkit/tests/test-migration-v2.sh",
+      "sha256": "95bb591e5b42087093d7285ea0562f8829652743434bdf72940236a6ad441082"
+    },
+    {
       "mode": "0644",
       "path": "devkit/tests/test-personal-path-guard.sh",
-      "sha256": "934761b13d11e5ddf90fa936ed8854b09043763eed1ab13066d433d45b528ac3"
+      "sha256": "f4dc27f8c7f691d3c09ebd8a081f7e966faa5d35eed654c6c7838b2840c4513a"
     },
     {
       "mode": "0644",
       "path": "devkit/tests/test-txn.sh",
-      "sha256": "e4c1955d0581381ceb5b5fbfe0cdc80b7f948ea7794707c3a63a82377c5b3199"
+      "sha256": "42d700442831642f7f8347d05e4d8c6a97977d86aaf6788e1bfdcfc633431ac0"
+    },
+    {
+      "mode": "0755",
+      "path": "devkit/tests/test-work-craft.sh",
+      "sha256": "87975cc544a66c000e705a478f36c78fad00f6ddf1528ecf3d9786d1d8c2ea03"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/tests/test_contract_v2.py",
+      "sha256": "1f344b46054e97aaac09a11525cf3af7f7fc5cd43e59d82ddbf39c6af07609f7"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/tests/test_decision_gating.py",
+      "sha256": "d99c14f4d3af387264ea2c99bf1f6408bc651bea7303da702c523a754748ac04"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/tests/test_harness_governance.py",
+      "sha256": "4161494b1855c96ad74cdf110bf0c4c02ffa71f238c7fb4190fc770e84c38913"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/tests/test_migration_v2.py",
+      "sha256": "dae84599297b55a8f6e19768e3d89f5a8908ee4a22d5446fb72c10b054ca4c85"
     },
     {
       "mode": "0644",
       "path": "devkit/tests/test_txn.py",
       "sha256": "bfeb0974e2d1c67e093949d9655a5900a8cdd739f52406b6411923ed94d32653"
+    },
+    {
+      "mode": "0644",
+      "path": "devkit/tests/test_work_craft.py",
+      "sha256": "d9b7a972bb26bc80574dc9cd549503c541abbf57c9dc905cf731d6d6fb0ceaaf"
     },
     {
       "mode": "0644",
