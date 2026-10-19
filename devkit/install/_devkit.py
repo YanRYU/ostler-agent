@@ -76,6 +76,7 @@ FORK_MARKER = "devkit:" + "forked"  # split so installer source isn't self-flagg
 FACTORY = Path(__file__).resolve().parent.parent          # .../devkit
 MODULES_DIR = FACTORY / "modules"
 AUDIT_SCRIPT = MODULES_DIR / "audit" / "payload" / "devkit-audit.py"
+PLATFORM = "claude"
 
 # Transaction library (install/lib/txn.py), found relative to this file:
 # <repo>/devkit/install/_devkit.py -> <repo>/install/lib
@@ -117,6 +118,38 @@ _TXN_KEY = _norm(TXN_DIRNAME)
 def _is_reserved(dest_rel: str) -> bool:
     key = _norm(dest_rel)
     return key in _RESERVED_KEYS or key.split("/", 1)[0] == _TXN_KEY
+
+
+def validate_codex_hooks(raw: bytes) -> None:
+    """Reject malformed project hooks before the transaction can write anything."""
+    config = json.loads(raw)
+    if not isinstance(config, dict) or not isinstance(config.get("hooks"), dict):
+        raise ValueError("hooks must be an object")
+    events = config["hooks"]
+    if not any(event in events for event in ("PreToolUse", "PostToolUse")):
+        raise ValueError("no PreToolUse or PostToolUse hooks")
+    for event in ("PreToolUse", "PostToolUse"):
+        if event not in events:
+            continue
+        groups = events.get(event)
+        if not isinstance(groups, list) or not groups:
+            raise ValueError(f"{event} must be a non-empty list")
+        for group in groups:
+            if not isinstance(group, dict) or not isinstance(group.get("matcher"), str):
+                raise ValueError(f"{event} group needs a matcher string")
+            try:
+                re.compile(group["matcher"])
+            except re.error as e:
+                raise ValueError(f"{event} invalid matcher: {e}") from e
+            handlers = group.get("hooks")
+            if not isinstance(handlers, list) or not handlers:
+                raise ValueError(f"{event} group needs a non-empty hooks list")
+            for handler in handlers:
+                if not isinstance(handler, dict) or handler.get("type") != "command" or not isinstance(handler.get("command"), str) or not handler["command"].strip():
+                    raise ValueError(f"{event} handler needs a command")
+                timeout = handler.get("timeout", 600)
+                if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or timeout <= 0:
+                    raise ValueError(f"{event} handler needs a positive timeout")
 
 
 def _same_file(a: Path, b: Path) -> bool:
@@ -229,7 +262,7 @@ def discover_modules() -> dict[str, dict]:
 
 
 def is_alias(name: str, mods: dict[str, dict]) -> bool:
-    return name in ALIASES and name not in mods
+    return PLATFORM == "claude" and name in ALIASES and name not in mods
 
 
 def expand_aliases(names: list[str], mods: dict[str, dict], announce: bool = True) -> list[str]:
@@ -558,10 +591,12 @@ def build_install_plan(target: Path, order: list[str], mods: dict[str, dict],
     merge_state: dict[str, dict] = {}       # merged dest -> {"data", "st"}: the cumulative merge
     merged_rec_all: dict[str, dict] = {}    # module -> its contributed patterns this plan
     prior_keys: dict[str, set[str]] = {}    # _norm(recorded path) -> {recorded paths}
+    prior_owners: dict[str, set[str]] = {}
     for inst in prior.get("installs", []):
         for f in inst.get("files", []):
             if isinstance(f.get("path"), str):
                 prior_keys.setdefault(_norm(f["path"]), set()).add(f["path"])
+                prior_owners.setdefault(f["path"], set()).add(inst.get("module", "?"))
     prior_by_module = {i.get("module"): i for i in prior.get("installs", [])}
     for name in order:
         meta = mods[name]
@@ -607,6 +642,16 @@ def build_install_plan(target: Path, order: list[str], mods: dict[str, dict],
                     f"{name}: dest {dest_rel!r} collides with the previously installed "
                     f"{clash[0]!r} (same file modulo case / Unicode normalization)")
                 continue
+            other_owners = sorted(owner for owner in prior_owners.get(dest_rel, ()) if owner != name)
+            # The Claude 1.x -> 2.0 migration intentionally redistributes ownership.
+            # Codex modules cannot take over another module's path, and Claude modules
+            # cannot take over a Codex path.
+            if other_owners and not shared_merge and (
+                PLATFORM == "codex" or any(owner.startswith("codex-") for owner in other_owners)
+            ):
+                plan.conflicts.append(f"  REFUSE managed-by-other-module {dest_rel} "
+                                      f"(owned by {', '.join(other_owners)})")
+                continue
             module_dests.add(dest_rel)           # a module may claim a dest at most once
             seen_dests.setdefault(dest_rel, name)
             seen_modes.setdefault(dest_rel, mode)
@@ -616,6 +661,12 @@ def build_install_plan(target: Path, order: list[str], mods: dict[str, dict],
                 continue
 
             src_bytes = src.read_bytes()
+            if PLATFORM == "codex" and dest_rel == ".codex/hooks.json":
+                try:
+                    validate_codex_hooks(src_bytes)
+                except ValueError as e:
+                    plan.errors.append(f"{name}: invalid Codex hook config: {e}")
+                    continue
             src_sha = txn.sha256_bytes(src_bytes)
             merge = mode == "merge"
             want_mode = _script_mode(src)
@@ -984,6 +1035,18 @@ def install(target: Path, modules: list[str], force: bool, allow_dirty: bool = F
 
     order = topo_order(modules, mods)
     print(f"[devkit] install order: {order}")
+    if PLATFORM == "codex" and "codex-hooks-core" in order:
+        try:
+            root = subprocess.run(["git", "-C", str(target), "rev-parse", "--show-toplevel"],
+                                  capture_output=True, text=True)
+            is_root = root.returncode == 0 and os.path.samefile(root.stdout.strip(), target)
+        except OSError:
+            is_root = False
+        if not is_root:
+            print("[devkit] ERROR: Codex hooks require the target to be a Git repository root. "
+                  "Check that Git is installed and run git init there before installing "
+                  "codex-hooks-core.", file=sys.stderr)
+            return 8
     if os.path.lexists(target) and not target.is_dir():
         print(f"[devkit] ERROR: target {target} exists and is not a directory", file=sys.stderr)
         return 8
@@ -1002,8 +1065,9 @@ def install(target: Path, modules: list[str], force: bool, allow_dirty: bool = F
             return _print_errors(plan), None
         if plan.conflicts:
             _print_refusals(plan, target)
-            print(f"[devkit] {len(plan.conflicts)} file(s) refused (modified/unmanaged). "
-                  "Nothing was written. Re-run with --force to overwrite.")
+            print(f"[devkit] {len(plan.conflicts)} file(s) refused. "
+                  "Nothing was written. --force only overrides modified or unmanaged files; "
+                  "resolve module ownership conflicts separately.")
             return 3, None
         manifest = build_manifest(prior, installs, plan.dropped, commit, dirty)
         if not plan.ops and _meaningful(manifest) == _meaningful(prior):
@@ -1016,6 +1080,9 @@ def install(target: Path, modules: list[str], force: bool, allow_dirty: bool = F
                 print(line)
             print(f"[devkit] wrote {target}/{MANIFEST_NAME} "
                   f"(source_commit={commit}, source_dirty={str(dirty).lower()})")
+            if PLATFORM == "codex":
+                print("[devkit] Codex files installed. Trust the project .codex config layer and "
+                      "review hooks with /hooks; copied hooks are not verified active yet.")
         return None, do_commit
 
     return _two_phase(target, tx, plan_once, create_target=True)
@@ -1036,8 +1103,10 @@ def update(target: Path, modules: list[str], force: bool, allow_dirty: bool = Fa
             print(f"[devkit] ERROR: cannot read manifest: {e}", file=sys.stderr)
             return 1
         mods = discover_modules()
-        legacy = [n for n in recorded if is_alias(n, mods)]
-        modules = expand_aliases([n for n in recorded if n in mods or is_alias(n, mods)], mods, announce=False)
+        legacy = [n for n in recorded if PLATFORM == "claude" and is_alias(n, mods)]
+        modules = expand_aliases([n for n in recorded if n in mods or
+                                  (PLATFORM == "claude" and is_alias(n, mods))], mods,
+                                 announce=False)
         if not modules:
             print(f"[devkit] nothing is installed in {target} that this kit provides; nothing to update "
                   "(use `install` to add modules)")
@@ -1050,6 +1119,10 @@ def update(target: Path, modules: list[str], force: bool, allow_dirty: bool = Fa
 def remove_module_named(target: Path, name: str, force: bool) -> int:
     """remove-module with 1.x alias handling: an installed record of that exact name is removed as
     before; otherwise a 1.x name acts on every installed module it maps to."""
+    if name.startswith("codex-") != (PLATFORM == "codex"):
+        print(f"[devkit] ERROR: module '{name}' belongs to the other installer platform",
+              file=sys.stderr)
+        return 1
     mods = discover_modules()
     mpath = target / MANIFEST_NAME
     have: list[str] = []
@@ -1075,6 +1148,10 @@ def remove_module_named(target: Path, name: str, force: bool) -> int:
 
 
 def remove_module(target: Path, name: str, force: bool) -> int:
+    if name.startswith("codex-") != (PLATFORM == "codex"):
+        print(f"[devkit] ERROR: module '{name}' belongs to the other installer platform",
+              file=sys.stderr)
+        return 1
     if not (target / MANIFEST_NAME).exists():
         print(f"[devkit] REFUSE: no {MANIFEST_NAME} in {target}", file=sys.stderr)
         return 1
@@ -1147,8 +1224,9 @@ def _pending(target: Path) -> int:
     """Non-zero (6) when an interrupted transaction is present; never mutates."""
     pend = make_txn(target).pending()
     if pend:
+        wrapper = "codex-install.sh" if PLATFORM == "codex" else "devkit-install.sh"
         print(f"[devkit] REFUSE: {len(pend)} interrupted transaction(s) in {target}; "
-              f"run: devkit-install.sh recover {shlex.quote(str(target))}", file=sys.stderr)
+              f"run: {wrapper} recover {shlex.quote(str(target))}", file=sys.stderr)
         return 6
     return 0
 
@@ -1180,6 +1258,8 @@ def _outdated_locked(target: Path, only: set[str] | None = None) -> int:
     mods = discover_modules()
     for inst in manifest.get("installs", []):
         name = inst.get("module", "?")
+        if (name.startswith("codex-")) != (PLATFORM == "codex"):
+            continue
         have = inst.get("fingerprint")
         if only is not None and name not in only:
             continue
@@ -1196,8 +1276,9 @@ def _outdated_locked(target: Path, only: set[str] | None = None) -> int:
             print(f"devkit: {name} outdated (cannot read its source payload: {e})")
             continue
         if have != cur:
+            wrapper = "codex-install.sh" if PLATFORM == "codex" else "devkit-install.sh"
             print(f"devkit: {name} outdated (installed {str(have)[:8]}, source {cur[:8]}) -> "
-                  f"devkit-install.sh install {shlex.quote(str(target))} {name}")
+                  f"{wrapper} install {shlex.quote(str(target))} {name}")
     return 0
 
 
@@ -1394,7 +1475,9 @@ def domains(check: bool) -> int:
 
 
 def main() -> int:
+    global MODULES_DIR, PLATFORM
     ap = argparse.ArgumentParser(prog="devkit-install")
+    ap.add_argument("--platform", choices=("claude", "codex"), default="claude")
     sub = ap.add_subparsers(dest="cmd", required=True)
     pi = sub.add_parser("install")
     pi.add_argument("target")
@@ -1427,7 +1510,10 @@ def main() -> int:
     pd = sub.add_parser("domains")
     pd.add_argument("--check", action="store_true")
     args = ap.parse_args()
+    PLATFORM = args.platform
+    MODULES_DIR = FACTORY / ("codex-modules" if PLATFORM == "codex" else "modules")
     if args.cmd == "readme":
+        MODULES_DIR = FACTORY / "modules"  # the generated README table lists Claude modules
         return readme(args.check)
     if args.cmd == "domains":
         return domains(args.check)
