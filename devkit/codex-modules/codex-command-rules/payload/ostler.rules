@@ -1,0 +1,11 @@
+# Ostler command policy for Codex. These decisions apply outside the sandbox.
+prefix_rule(pattern = ["rm", "-rf"], decision = "forbidden", justification = "Use a targeted, reviewed removal instead.")
+prefix_rule(pattern = ["rm", "-fr"], decision = "forbidden", justification = "Use a targeted, reviewed removal instead.")
+prefix_rule(pattern = ["git", "reset", "--hard"], decision = "forbidden", justification = "Preserve local changes; use a reviewed alternative.")
+prefix_rule(pattern = ["git", "clean"], decision = "forbidden", justification = "Preserve untracked files; review them individually.")
+prefix_rule(pattern = ["git", "push", "--force"], decision = "forbidden", justification = "Use a non-forcing push.")
+prefix_rule(pattern = ["sudo"], decision = "prompt", justification = "Elevated system changes require approval.")
+prefix_rule(pattern = ["curl"], decision = "prompt", justification = "Review the destination and downloaded content.")
+prefix_rule(pattern = ["wget"], decision = "prompt", justification = "Review the destination and downloaded content.")
+prefix_rule(pattern = ["git", "push"], decision = "prompt", justification = "Review the destination branch before pushing.")
+prefix_rule(pattern = ["npm", "publish"], decision = "prompt", justification = "Publishing a package requires approval.")

@@ -292,20 +292,7 @@ def check_drift(target: Path) -> int:
     return 2 if fail else 0
 
 
-def _resolve_dir(target: Path, name: str) -> Path | None:
-    """Find a payload directory in either layout: <target>/.claude/<name> (repo
-    install) or <target>/<name> (target is itself the config directory)."""
-    for cand in (target / ".claude" / name, target / name):
-        if cand.is_dir():
-            return cand
-    return None
-
-
-def check_enforcement_gaps(target: Path) -> None:
-    hooks_dir = _resolve_dir(target, "hooks")
-    rules_dir = _resolve_dir(target, "rules")
-    if hooks_dir is None:
-        return
+def _scan_enforcement_gaps(hooks_dir: Path, rules_dir: Path | None) -> None:
     enforces_re = re.compile(r"Enforces:\s*(.+)")
     rule_re = re.compile(r"rules/([A-Za-z0-9_.\-]+\.md)")  # matches any path ending in rules/<name>.md
     none_re = re.compile(r"^\s*none\b", re.IGNORECASE)
@@ -327,7 +314,7 @@ def check_enforcement_gaps(target: Path) -> None:
         if rule_m:
             rule_name = rule_m.group(1)
             enforced_rules.add(rule_name)
-            if rules_dir is not None and not (rules_dir / rule_name).exists():
+            if rules_dir is None or not (rules_dir / rule_name).exists():
                 print(f"  !! {hook.name}: enforces rules/{rule_name} but that rule file is MISSING")
         elif none_re.match(rest):
             continue
@@ -337,6 +324,18 @@ def check_enforcement_gaps(target: Path) -> None:
         for rule in sorted(rules_dir.glob("*.md")):
             if rule.name not in enforced_rules:
                 print(f"  -- rule {rule.name}: no hook declares it (may be instruction-only)")
+
+
+def check_enforcement_gaps(target: Path) -> None:
+    """Scan each installed agent layout without mistaking Codex policy files for Markdown rules."""
+    layouts = (
+        (target / ".claude" / "hooks", target / ".claude" / "rules"),
+        (target / ".codex" / "hooks", target / ".agents" / "ostler" / "rules"),
+        (target / "hooks", target / "rules"),
+    )
+    for hooks_dir, rules_dir in layouts:
+        if hooks_dir.is_dir():
+            _scan_enforcement_gaps(hooks_dir, rules_dir if rules_dir.is_dir() else None)
 
 
 def _default_target() -> Path:
