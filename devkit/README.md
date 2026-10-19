@@ -43,7 +43,8 @@ Codex modules live in `devkit/codex-modules/`: `codex-instructions` installs
 `AGENTS.md` and detailed rules; `codex-command-rules` installs `.codex/rules/ostler.rules`;
 `codex-hooks-core` installs `.codex/hooks.json` and branch, stash, and personal-path
 notices; `codex-skill-template` installs a starter `SKILL.md`; and `codex-audit`
-installs `.codex/devkit-audit.py`. The starter skill is an example, not an active control.
+installs `.codex/devkit-audit.py`. The starter skill stays outside Codex's skill
+discovery path until copied into `.agents/skills/` and customized.
 
 ## Use
 
@@ -80,11 +81,16 @@ The two catalogues share the target manifest, lock, and journal. Installing or
 removing a Codex module preserves Claude module records, and vice versa. `outdated`
 reports only modules from the selected catalogue; `check` audits the entire manifest.
 Codex hooks run only after project config trust and `/hooks` review. Their commands
-resolve scripts from the Git repository root, so install them into a Git repository.
+resolve scripts from the Git repository root; installing `codex-hooks-core` requires
+the target to be that root. If Git or a hook script later becomes unavailable, the
+hook command exits without blocking Codex.
 Codex command rules govern commands outside the sandbox and are not a substitute for
-Claude Code's permissions. The Codex personal-path hook inspects file edit inputs
+Claude Code's permissions. They match exact command prefixes, so alternate flags,
+paths, and shell wrappers may need separate review. The Codex personal-path hook inspects file edit inputs
 through `apply_patch` (including the `Edit` and `Write` matcher aliases); it does not
 cover shell redirection or arbitrary programs.
+The manifest-wide `source_commit` and `source_dirty` fields describe the latest
+installer run; per-module fingerprints track each installed module's version.
 
 ## Tests
 

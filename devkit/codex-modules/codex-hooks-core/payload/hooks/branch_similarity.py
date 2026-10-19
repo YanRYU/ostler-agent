@@ -28,9 +28,12 @@ def main():
         event = json.load(sys.stdin)
     except (ValueError, OSError):
         return
-    if event.get("tool_name") != "Bash":
+    if not isinstance(event, dict) or event.get("tool_name") != "Bash":
         return
-    command = event.get("tool_input", {}).get("command", "")
+    inputs = event.get("tool_input")
+    if not isinstance(inputs, dict):
+        return
+    command = inputs.get("command", "")
     if not isinstance(command, str):
         return
     # Parse one simple git invocation; complex shell programs are left to review.
@@ -43,7 +46,8 @@ def main():
     if not words or words[0] != "git":
         return
     branch = None
-    if len(words) >= 4 and words[1:3] in (["switch", "-c"], ["checkout", "-b"]):
+    if len(words) >= 4 and ((words[1] == "switch" and words[2] in ("-c", "-C", "--create", "--force-create"))
+                            or (words[1] == "checkout" and words[2] in ("-b", "-B"))):
         branch = words[3]
     elif len(words) >= 3 and words[1] == "branch" and not words[2].startswith("-"):
         branch = words[2]

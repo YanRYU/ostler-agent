@@ -31,6 +31,8 @@ def patch_edits(command):
     for line in command.splitlines():
         if line.startswith(("*** Add File: ", "*** Update File: ")):
             path = line.split(": ", 1)[1]
+        elif line.startswith("*** Move to: ") and path:
+            path = line.split(": ", 1)[1]
         elif line.startswith("*** Delete File: "):
             path = None
         elif path and line.startswith("+") and not line.startswith("+++"):
@@ -41,6 +43,8 @@ def main():
     try:
         event = json.load(sys.stdin)
     except (ValueError, OSError):
+        return
+    if not isinstance(event, dict):
         return
     tool, inputs = event.get("tool_name"), event.get("tool_input", {})
     if not isinstance(inputs, dict):

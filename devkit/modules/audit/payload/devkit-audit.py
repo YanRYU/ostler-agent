@@ -292,7 +292,8 @@ def check_drift(target: Path) -> int:
     return 2 if fail else 0
 
 
-def _scan_enforcement_gaps(hooks_dir: Path, rules_dir: Path | None) -> None:
+def _scan_enforcement_gaps(hooks_dir: Path, rules_dir: Path | None,
+                           report_missing_rule_dir: bool = False) -> None:
     enforces_re = re.compile(r"Enforces:\s*(.+)")
     rule_re = re.compile(r"rules/([A-Za-z0-9_.\-]+\.md)")  # matches any path ending in rules/<name>.md
     none_re = re.compile(r"^\s*none\b", re.IGNORECASE)
@@ -314,7 +315,9 @@ def _scan_enforcement_gaps(hooks_dir: Path, rules_dir: Path | None) -> None:
         if rule_m:
             rule_name = rule_m.group(1)
             enforced_rules.add(rule_name)
-            if rules_dir is None or not (rules_dir / rule_name).exists():
+            if (rules_dir is None and report_missing_rule_dir) or (
+                rules_dir is not None and not (rules_dir / rule_name).exists()
+            ):
                 print(f"  !! {hook.name}: enforces rules/{rule_name} but that rule file is MISSING")
         elif none_re.match(rest):
             continue
@@ -328,14 +331,43 @@ def _scan_enforcement_gaps(hooks_dir: Path, rules_dir: Path | None) -> None:
 
 def check_enforcement_gaps(target: Path) -> None:
     """Scan each installed agent layout without mistaking Codex policy files for Markdown rules."""
-    layouts = (
-        (target / ".claude" / "hooks", target / ".claude" / "rules"),
-        (target / ".codex" / "hooks", target / ".agents" / "ostler" / "rules"),
-        (target / "hooks", target / "rules"),
-    )
-    for hooks_dir, rules_dir in layouts:
-        if hooks_dir.is_dir():
-            _scan_enforcement_gaps(hooks_dir, rules_dir if rules_dir.is_dir() else None)
+    claude_hooks = target / ".claude" / "hooks"
+    codex_hooks = target / ".codex" / "hooks"
+    if claude_hooks.is_dir():
+        rules = target / ".claude" / "rules"
+        _scan_enforcement_gaps(claude_hooks, rules if rules.is_dir() else None)
+    if codex_hooks.is_dir():
+        rules = target / ".agents" / "ostler" / "rules"
+        _scan_enforcement_gaps(codex_hooks, rules if rules.is_dir() else None, True)
+    config_path = target / ".codex" / "hooks.json"
+    if config_path.is_file():
+        try:
+            config = json.loads(config_path.read_text())
+            events = config.get("hooks", {})
+            if not isinstance(events, dict):
+                raise ValueError("hooks is not an object")
+            for groups in events.values():
+                if not isinstance(groups, list):
+                    continue
+                for group in groups:
+                    if not isinstance(group, dict):
+                        continue
+                    handlers = group.get("hooks")
+                    if not isinstance(handlers, list):
+                        continue
+                    for handler in handlers:
+                        if not isinstance(handler, dict) or not isinstance(handler.get("command"), str):
+                            continue
+                        for name in re.findall(r"\.codex/hooks/([A-Za-z0-9_.-]+\.py)", handler["command"]):
+                            if not (codex_hooks / name).is_file():
+                                print(f"  !! hooks.json: referenced script .codex/hooks/{name} is MISSING")
+        except (OSError, ValueError) as e:
+            print(f"  !! hooks.json: cannot inspect hook references ({e})")
+    if not claude_hooks.is_dir() and not codex_hooks.is_dir():
+        hooks = target / "hooks"
+        rules = target / "rules"
+        if hooks.is_dir():
+            _scan_enforcement_gaps(hooks, rules if rules.is_dir() else None)
 
 
 def _default_target() -> Path:

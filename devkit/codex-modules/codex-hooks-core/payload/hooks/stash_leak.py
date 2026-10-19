@@ -14,10 +14,13 @@ def main():
         event = json.load(sys.stdin)
     except (ValueError, OSError):
         return
-    if event.get("tool_name") != "Bash":
+    if not isinstance(event, dict) or event.get("tool_name") != "Bash":
         return
-    command = event.get("tool_input", {}).get("command", "")
-    if not isinstance(command, str) or not re.search(r"(?:^|[;&|\n]\s*)git\s+(?:commit|push)\b", command):
+    inputs = event.get("tool_input")
+    if not isinstance(inputs, dict):
+        return
+    command = inputs.get("command", "")
+    if not isinstance(command, str) or not re.search(r"(?:^|[;&|\n])\s*git\s+(?:commit|push)\b", command):
         return
     result = subprocess.run(["git", "stash", "list"], cwd=os.getcwd(), capture_output=True, text=True)
     if result.returncode or not result.stdout.strip():

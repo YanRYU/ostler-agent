@@ -82,7 +82,8 @@ and never touches your own `allow` entries.
 
 ## Codex quick start
 
-Run this from the same Ostler clone, targeting a Git repository:
+Run this from the same Ostler clone, targeting the root of a Git repository. The
+hooks module refuses a plain directory or a subdirectory of a repository:
 
 ```bash
 devkit/install/codex-install.sh install /path/to/your-repo
@@ -91,14 +92,16 @@ devkit/install/codex-install.sh check /path/to/your-repo
 
 This installs `AGENTS.md`, detailed guidance under `.agents/ostler/rules/`, command
 rules at `.codex/rules/ostler.rules`, `.codex/hooks.json` and its Python hooks, a
-starter skill under `.agents/skills/EXAMPLE-SKILL/`, and a standalone audit at
+starter skill under `.agents/ostler/templates/EXAMPLE-SKILL/`, and a standalone audit at
 `.codex/devkit-audit.py`. An existing unmanaged `AGENTS.md` is preserved: installation
 refuses until you choose specific modules or explicitly use `--force`.
+Copy and customize the starter skill into `.agents/skills/` when you want Codex to discover it.
 
 After installing, trust the repository's `.codex` config layer and review the hooks
 with `/hooks` in Codex. Copied hooks have not been verified active. The command rules
-only govern commands outside Codex's sandbox; they do not reproduce Claude Code's
-file access deny list. The hooks inspect supported tool events, so they also cannot
+only govern commands outside Codex's sandbox and match command prefixes rather than
+every shell spelling; they do not reproduce Claude Code's file access deny list.
+The hooks inspect supported tool events, so they also cannot
 cover every way a file might be written. See the [Codex hook documentation](https://learn.chatgpt.com/docs/hooks)
 and [command rules documentation](https://learn.chatgpt.com/docs/agent-configuration/rules).
 

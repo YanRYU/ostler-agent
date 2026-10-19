@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import runpy
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -73,11 +75,12 @@ class CodexPayloadTests(unittest.TestCase):
                 ".agents/ostler/rules/plan-writing.md",
                 ".agents/ostler/rules/privacy.md",
                 ".agents/ostler/rules/self-contained-agents.md",
-                ".agents/skills/EXAMPLE-SKILL/SKILL.md",
+                ".agents/ostler/templates/EXAMPLE-SKILL/SKILL.md",
                 ".codex/rules/ostler.rules", ".codex/devkit-audit.py",
                 ".devkit-manifest.json",
             ):
                 self.assertTrue((target / rel).is_file(), rel)
+            self.assertFalse((target / ".agents" / "skills" / "EXAMPLE-SKILL").exists())
             installed_audit = subprocess.run(
                 ["python3", "-S", str(target / ".codex" / "devkit-audit.py"), str(target)],
                 capture_output=True, text=True,
@@ -113,6 +116,18 @@ class CodexPayloadTests(unittest.TestCase):
             )
             self.assertEqual(checked.returncode, 0, checked.stderr)
             self.assertEqual(json.loads(checked.stdout)["decision"], "prompt")
+            clean_dry_run = subprocess.run(
+                ["codex", "execpolicy", "check", "--rules", str(rule), "git", "clean", "-n"],
+                capture_output=True, text=True,
+            )
+            self.assertEqual(clean_dry_run.returncode, 0, clean_dry_run.stderr)
+            self.assertEqual(json.loads(clean_dry_run.stdout)["decision"], "prompt")
+            clean_force = subprocess.run(
+                ["codex", "execpolicy", "check", "--rules", str(rule), "git", "clean", "-fd"],
+                capture_output=True, text=True,
+            )
+            self.assertEqual(clean_force.returncode, 0, clean_force.stderr)
+            self.assertEqual(json.loads(clean_force.stdout)["decision"], "forbidden")
 
     def test_audit_reports_codex_hook_without_its_instruction_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -129,6 +144,39 @@ class CodexPayloadTests(unittest.TestCase):
             self.assertIn("privacy.md", result.stdout)
             self.assertIn("MISSING", result.stdout)
 
+    def test_audit_does_not_scan_unrelated_root_hooks_or_change_claude_gap_output(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp)
+            claude_hooks = target / ".claude" / "hooks"
+            claude_hooks.mkdir(parents=True)
+            (claude_hooks / "check.py").write_text("# Enforces: rules/privacy.md\n")
+            root_hooks = target / "hooks"
+            root_hooks.mkdir()
+            (root_hooks / "unrelated.py").write_text("print('hello')\n")
+            result = subprocess.run(["python3", "-S", str(AUDIT), str(target)],
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertNotIn("unrelated.py", result.stdout)
+            self.assertNotIn("privacy.md but that rule file is MISSING", result.stdout)
+
+    def test_claude_and_codex_audit_payloads_match(self) -> None:
+        codex_audit = ROOT / "devkit" / "codex-modules" / "codex-audit" / "payload" / "devkit-audit.py"
+        self.assertEqual(AUDIT.read_bytes(), codex_audit.read_bytes())
+
+    def test_audit_reports_missing_codex_hook_script_reference(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp)
+            codex = target / ".codex"
+            codex.mkdir()
+            (codex / "hooks.json").write_text(json.dumps({"hooks": {"PreToolUse": [{
+                "matcher": "Bash", "hooks": [{"type": "command", "command": "python3 .codex/hooks/missing.py"}]
+            }]}}))
+            result = subprocess.run(["python3", "-S", str(AUDIT), str(target)],
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("missing.py", result.stdout)
+            self.assertIn("MISSING", result.stdout)
+
 
 class CodexHookTests(unittest.TestCase):
     def make_repo(self, target: Path) -> None:
@@ -141,6 +189,13 @@ class CodexHookTests(unittest.TestCase):
             ["python3", str(HOOKS / script)], cwd=target, input=json.dumps(payload),
             capture_output=True, text=True, env={**os.environ, **env},
         )
+
+    def test_hooks_ignore_non_object_tool_input(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            for script in ("branch_similarity.py", "stash_leak.py", "personal_path_guard.py"):
+                result = self.run_hook(script, Path(tmp), {"tool_name": "Bash", "tool_input": None})
+                self.assertEqual(result.returncode, 0, (script, result.stderr))
+                self.assertEqual(result.stdout, "", script)
 
     def test_branch_hook_surfaces_existing_branch(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -156,6 +211,11 @@ class CodexHookTests(unittest.TestCase):
             })
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn("already exists", json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"])
+            long_option = self.run_hook("branch_similarity.py", target, {
+                "hook_event_name": "PreToolUse", "tool_name": "Bash",
+                "tool_input": {"command": "git switch --create feature/work-a"},
+            })
+            self.assertIn("already exists", json.loads(long_option.stdout)["hookSpecificOutput"]["additionalContext"])
 
     def test_branch_hook_surfaces_shared_domain_tokens(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -187,6 +247,11 @@ class CodexHookTests(unittest.TestCase):
             })
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn("test stash", json.loads(result.stdout)["systemMessage"])
+            indented = self.run_hook("stash_leak.py", target, {
+                "hook_event_name": "PostToolUse", "tool_name": "Bash",
+                "tool_input": {"command": "  git push origin main"},
+            })
+            self.assertIn("test stash", json.loads(indented.stdout)["systemMessage"])
 
     def test_path_hook_warns_for_shared_patch_but_skips_ignored_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -217,9 +282,24 @@ class CodexHookTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn(".codex/config.toml", json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"])
 
+    def test_path_hook_checks_patch_move_destination(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp)
+            self.make_repo(target)
+            (target / ".gitignore").write_text("secret.txt\n")
+            payload = {
+                "hook_event_name": "PreToolUse", "tool_name": "apply_patch",
+                "tool_input": {"command": "*** Begin Patch\n*** Update File: secret.txt\n*** Move to: shared.txt\n@@\n+path=/Users/alice/project\n*** End Patch\n"},
+                "cwd": str(target),
+            }
+            result = self.run_hook("personal_path_guard.py", target, payload)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("shared.txt", json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"])
+
     def test_hooks_install_with_valid_codex_config_and_activation_message(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             target = Path(tmp) / "repo"
+            self.make_repo(target)
             result = run_installer(CODEX, "install", str(target), "codex-instructions", "codex-hooks-core", "--allow-dirty")
             self.assertEqual(result.returncode, 0, result.stderr)
             config = json.loads((target / ".codex" / "hooks.json").read_text())
@@ -227,6 +307,23 @@ class CodexHookTests(unittest.TestCase):
             self.assertIn("PostToolUse", config["hooks"])
             self.assertIn("/hooks", result.stdout)
             self.assertIn("trust", result.stdout.lower())
+
+    def test_hooks_refuse_non_git_target_without_writing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "plain"
+            result = run_installer(CODEX, "install", str(target), "codex-hooks-core", "--allow-dirty")
+            self.assertEqual(result.returncode, 8, result.stdout + result.stderr)
+            self.assertIn("Git repository root", result.stderr)
+            self.assertFalse(target.exists())
+
+    def test_hook_command_exits_cleanly_if_git_root_unavailable(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            config = json.loads((HOOKS.parent / "hooks.json").read_text())
+            command = config["hooks"]["PreToolUse"][0]["hooks"][0]["command"]
+            result = subprocess.run(["sh", "-c", command], cwd=tmp,
+                                    input='{"tool_name":"Bash","tool_input":{"command":"git switch -c work"}}',
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_invalid_nested_hook_config_is_rejected_by_preflight(self) -> None:
         installer = runpy.run_path(str(ROOT / "devkit" / "install" / "_devkit.py"))
@@ -239,9 +336,70 @@ class CodexHookTests(unittest.TestCase):
         config["hooks"]["PostToolUse"][0]["hooks"][0]["command"] = ""
         with self.assertRaises(ValueError):
             validate(json.dumps(config).encode())
+        config["hooks"].pop("PostToolUse")
+        validate(json.dumps(config).encode())
 
 
 class MixedInstallTests(unittest.TestCase):
+    def test_codex_module_updates_from_new_factory_commit(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            factory = base / "factory"
+            shutil.copytree(ROOT / "devkit" / "install", factory / "devkit" / "install")
+            shutil.copytree(ROOT / "install" / "lib", factory / "install" / "lib")
+            module = factory / "devkit" / "codex-modules" / "codex-instructions"
+            shutil.copytree(ROOT / "devkit" / "codex-modules" / "codex-instructions", module)
+            subprocess.run(["git", "init", "-q", str(factory)], check=True)
+            for key, value in (("user.name", "Tester"), ("user.email", "tester@example.com")):
+                subprocess.run(["git", "-C", str(factory), "config", key, value], check=True)
+            subprocess.run(["git", "-C", str(factory), "add", "."], check=True)
+            subprocess.run(["git", "-C", str(factory), "commit", "-qm", "initial"], check=True)
+            target = base / "target"
+            subprocess.run(["git", "init", "-q", str(target)], check=True)
+            wrapper = factory / "devkit" / "install" / "codex-install.sh"
+            first = run_installer(wrapper, "install", str(target), "codex-instructions")
+            self.assertEqual(first.returncode, 0, first.stderr)
+            source = module / "payload" / "AGENTS.md"
+            source.write_text(source.read_text() + "\nUpdated guidance.\n")
+            subprocess.run(["git", "-C", str(factory), "add", "."], check=True)
+            subprocess.run(["git", "-C", str(factory), "commit", "-qm", "update"], check=True)
+            second = run_installer(wrapper, "install", str(target), "codex-instructions")
+            self.assertEqual(second.returncode, 0, second.stderr)
+            self.assertIn("Updated guidance.", (target / "AGENTS.md").read_text())
+
+    def test_module_cannot_take_over_another_modules_managed_path(self) -> None:
+        installer = runpy.run_path(str(ROOT / "devkit" / "install" / "_devkit.py"))
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            target = base / "repo"
+            target.mkdir()
+            dest = target / "shared.txt"
+            dest.write_text("old\n")
+            module = base / "codex-collision"
+            payload = module / "payload"
+            payload.mkdir(parents=True)
+            (payload / "new.txt").write_text("new\n")
+            prior = {"installs": [{"module": "rules-core", "files": [{
+                "path": "shared.txt", "sha256": hashlib.sha256(dest.read_bytes()).hexdigest(),
+                "mode": "overwrite",
+            }]}]}
+            mods = {"codex-collision": {"_dir": module, "payload": [
+                {"src": "new.txt", "dest": "shared.txt", "mode": "overwrite"}
+            ]}}
+            plan, _ = installer["build_install_plan"](target, ["codex-collision"], mods, prior, False)
+            self.assertTrue(any("managed-by-other-module" in issue for issue in plan.conflicts), plan.conflicts)
+
+    def test_codex_wrapper_cannot_remove_claude_module(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "repo"
+            first = run_installer(CLAUDE, "install", str(target), "rules-core")
+            self.assertEqual(first.returncode, 0, first.stderr)
+            before = (target / ".devkit-manifest.json").read_bytes()
+            result = run_installer(CODEX, "remove-module", str(target), "rules-core")
+            self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertEqual((target / ".devkit-manifest.json").read_bytes(), before)
+            self.assertTrue((target / ".claude" / "rules" / "git-hygiene.md").is_file())
+
     def test_end_to_end_preserves_claude_during_codex_install_and_removal(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             target = Path(tmp) / "repo"
@@ -283,6 +441,7 @@ class MixedInstallTests(unittest.TestCase):
     def test_modified_hook_config_refuses_without_partial_update(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             target = Path(tmp) / "repo"
+            subprocess.run(["git", "init", "-q", str(target)], check=True)
             first = run_installer(CODEX, "install", str(target), "--allow-dirty")
             self.assertEqual(first.returncode, 0, first.stderr)
             hooks = target / ".codex" / "hooks.json"

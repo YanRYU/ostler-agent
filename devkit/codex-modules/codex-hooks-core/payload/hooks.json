@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$(git rev-parse --show-toplevel)/.codex/hooks/branch_similarity.py\"",
+            "command": "root=\"$(git rev-parse --show-toplevel 2>/dev/null)\"; if [ -n \"$root\" ] && [ -f \"$root/.codex/hooks/branch_similarity.py\" ]; then python3 \"$root/.codex/hooks/branch_similarity.py\"; fi",
             "timeout": 10
           }
         ]
@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$(git rev-parse --show-toplevel)/.codex/hooks/personal_path_guard.py\"",
+            "command": "root=\"$(git rev-parse --show-toplevel 2>/dev/null)\"; if [ -n \"$root\" ] && [ -f \"$root/.codex/hooks/personal_path_guard.py\" ]; then python3 \"$root/.codex/hooks/personal_path_guard.py\"; fi",
             "timeout": 10
           }
         ]
@@ -28,7 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$(git rev-parse --show-toplevel)/.codex/hooks/stash_leak.py\"",
+            "command": "root=\"$(git rev-parse --show-toplevel 2>/dev/null)\"; if [ -n \"$root\" ] && [ -f \"$root/.codex/hooks/stash_leak.py\" ]; then python3 \"$root/.codex/hooks/stash_leak.py\"; fi",
             "timeout": 10
           }
         ]

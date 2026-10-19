@@ -106,7 +106,11 @@ def validate_codex_hooks(raw: bytes) -> None:
     if not isinstance(config, dict) or not isinstance(config.get("hooks"), dict):
         raise ValueError("hooks must be an object")
     events = config["hooks"]
+    if not any(event in events for event in ("PreToolUse", "PostToolUse")):
+        raise ValueError("no PreToolUse or PostToolUse hooks")
     for event in ("PreToolUse", "PostToolUse"):
+        if event not in events:
+            continue
         groups = events.get(event)
         if not isinstance(groups, list) or not groups:
             raise ValueError(f"{event} must be a non-empty list")
@@ -366,10 +370,12 @@ def build_install_plan(target: Path, order: list[str], mods: dict[str, dict],
     seen_dests: dict[str, str] = {}
     seen_keys: dict[str, str] = {}          # _norm(dest) -> dest
     prior_keys: dict[str, set[str]] = {}    # _norm(recorded path) -> {recorded paths}
+    prior_owners: dict[str, set[str]] = {}
     for inst in prior.get("installs", []):
         for f in inst.get("files", []):
             if isinstance(f.get("path"), str):
                 prior_keys.setdefault(_norm(f["path"]), set()).add(f["path"])
+                prior_owners.setdefault(f["path"], set()).add(inst.get("module", "?"))
     for name in order:
         meta = mods[name]
         files_record = []
@@ -406,6 +412,11 @@ def build_install_plan(target: Path, order: list[str], mods: dict[str, dict],
                 plan.errors.append(
                     f"{name}: dest {dest_rel!r} collides with the previously installed "
                     f"{clash[0]!r} (same file modulo case / Unicode normalization)")
+                continue
+            other_owners = sorted(owner for owner in prior_owners.get(dest_rel, ()) if owner != name)
+            if other_owners:
+                plan.conflicts.append(f"  REFUSE managed-by-other-module {dest_rel} "
+                                      f"(owned by {', '.join(other_owners)})")
                 continue
             seen_dests[dest_rel] = name
             seen_keys[key] = dest_rel
@@ -619,6 +630,13 @@ def install(target: Path, modules: list[str], force: bool, allow_dirty: bool = F
 
     order = topo_order(modules, mods)
     print(f"[devkit] install order: {order}")
+    if PLATFORM == "codex" and "codex-hooks-core" in order:
+        root = subprocess.run(["git", "-C", str(target), "rev-parse", "--show-toplevel"],
+                              capture_output=True, text=True)
+        if root.returncode or Path(root.stdout.strip()).resolve() != target:
+            print("[devkit] ERROR: Codex hooks require the target to be a Git repository root. "
+                  "Run git init there before installing codex-hooks-core.", file=sys.stderr)
+            return 8
     if os.path.lexists(target) and not target.is_dir():
         print(f"[devkit] ERROR: target {target} exists and is not a directory", file=sys.stderr)
         return 8
@@ -660,6 +678,10 @@ def install(target: Path, modules: list[str], force: bool, allow_dirty: bool = F
 
 
 def remove_module(target: Path, name: str, force: bool) -> int:
+    if name.startswith("codex-") != (PLATFORM == "codex"):
+        print(f"[devkit] ERROR: module '{name}' belongs to the other installer platform",
+              file=sys.stderr)
+        return 1
     if not (target / MANIFEST_NAME).exists():
         print(f"[devkit] REFUSE: no {MANIFEST_NAME} in {target}", file=sys.stderr)
         return 1
@@ -726,8 +748,9 @@ def _pending(target: Path) -> int:
     """Non-zero (6) when an interrupted transaction is present; never mutates."""
     pend = make_txn(target).pending()
     if pend:
+        wrapper = "codex-install.sh" if PLATFORM == "codex" else "devkit-install.sh"
         print(f"[devkit] REFUSE: {len(pend)} interrupted transaction(s) in {target}; "
-              f"run: devkit-install.sh recover {shlex.quote(str(target))}", file=sys.stderr)
+              f"run: {wrapper} recover {shlex.quote(str(target))}", file=sys.stderr)
         return 6
     return 0
 

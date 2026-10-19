@@ -10,7 +10,7 @@ This design assumes the first release covers Ostler's existing layers: instructi
 
 From an Ostler checkout, run `devkit/install/codex-install.sh install /path/to/target-repo`. The wrapper selects Codex modules and uses the existing planner, lock, transaction journal, manifest, refusal behavior, and `--allow-dirty` / `--force` flags. `check`, `outdated`, `patch`, `remove-module`, and `recover` remain available through the same wrapper. The existing `devkit-install.sh` keeps its Claude defaults.
 
-The target is a local repository. A Codex install places repository-level files in that target, not in the user's global Codex configuration. Reinstall is idempotent; unmanaged or edited files are refused unless the user explicitly passes `--force`. The target can be used without the Ostler checkout after installation.
+The target is a local repository. Installing the Codex hooks module requires the target to be the Git repository root. A Codex install places repository-level files in that target, not in the user's global Codex configuration. Reinstall is idempotent; unmanaged or edited files are refused unless the user explicitly passes `--force`. The target can be used without the Ostler checkout after installation.
 
 ## Installed layers
 
@@ -19,10 +19,10 @@ The target is a local repository. A Codex install places repository-level files 
 | Entry and instructions | `AGENTS.md` plus `.agents/ostler/rules/*.md` | Short persistent instructions point to detailed rules. Existing unmanaged `AGENTS.md` is preserved by refusal. |
 | Command permissions | `.codex/rules/ostler.rules` | Codex `prefix_rule` entries cover command approval or denial outside the sandbox. They do not reproduce Claude's file read/write deny list. |
 | Hooks | `.codex/hooks.json` and `.codex/hooks/*` | Port branch and stash notices; adapt the personal-path check for Codex `apply_patch` input. Do not ship the Claude plan-exit hook, whose transcript and plan-path assumptions do not hold in Codex. |
-| Skill template | `.agents/skills/EXAMPLE-SKILL/SKILL.md` | A clearly marked starter skill; never presented as an active Ostler control. |
+| Skill template | `.agents/ostler/templates/EXAMPLE-SKILL/SKILL.md` | A starter skill outside Codex's discovery path; copy and customize it into `.agents/skills/` to activate it. |
 | Drift audit | `.codex/devkit-audit.py` | Self-contained standard-library checker for manifest-managed files and Codex hook/rule references. |
 
-Codex requires review and trust before non-managed hooks run. Project-local `.codex` hooks and command rules also require the project config layer to be trusted. The installer prints these activation steps and never reports a copied file as an active control without runtime verification. [Codex hooks](https://learn.chatgpt.com/docs/hooks), [Codex rules](https://learn.chatgpt.com/docs/agent-configuration/rules), [AGENTS.md](https://learn.chatgpt.com/docs/agent-configuration/agents-md), [skills](https://learn.chatgpt.com/docs/build-skills).
+Codex requires review and trust before non-managed hooks run. Project-local `.codex` hooks and command rules also require the project config layer to be trusted. The installer prints these activation steps and never reports a copied file as an active control without runtime verification. Command prefix rules and edit hooks cover only matching tool paths; they are not a complete security boundary. [Codex hooks](https://learn.chatgpt.com/docs/hooks), [Codex rules](https://learn.chatgpt.com/docs/agent-configuration/rules), [AGENTS.md](https://learn.chatgpt.com/docs/agent-configuration/agents-md), [skills](https://learn.chatgpt.com/docs/build-skills).
 
 ## Architecture
 
@@ -32,7 +32,7 @@ Keep the existing manifest and transaction metadata filenames so mixed Claude/Co
 
 ## Failure behavior
 
-An install must refuse before writing if a destination escapes the target, a source module is dirty without `--allow-dirty`, a target file is unmanaged or modified, a hook configuration is malformed, or two modules claim colliding paths. The existing transaction library remains the only mutating path. Installing Codex modules cannot delete Claude-managed files, and vice versa. A copied hook that has not been trusted is reported as installed but not verified active.
+An install must refuse before writing if a destination escapes the target, a source module is dirty without `--allow-dirty`, a target file is unmanaged or modified, a hook configuration is malformed, two modules claim colliding paths, or the hooks target is not the Git repository root. The existing transaction library remains the only mutating path. Installing or removing Codex modules cannot delete Claude-managed files, and vice versa. A copied hook that has not been trusted is reported as installed but not verified active.
 
 ## Verification
 

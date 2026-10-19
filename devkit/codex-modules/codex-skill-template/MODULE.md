@@ -4,7 +4,7 @@ version: "1.0.0"
 layer: TEMPLATE
 depends-on: []
 payload:
-  - { src: "SKILL.md", dest: ".agents/skills/EXAMPLE-SKILL/SKILL.md", mode: overwrite }
+  - { src: "SKILL.md", dest: ".agents/ostler/templates/EXAMPLE-SKILL/SKILL.md", mode: overwrite }
 ---
 
 # Codex skill template
