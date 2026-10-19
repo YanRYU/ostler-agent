@@ -364,6 +364,25 @@ class CodexHookTests(unittest.TestCase):
 
 
 class MixedInstallTests(unittest.TestCase):
+    def test_codex_install_preserves_unmigrated_claude_record(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "repo"
+            settings = target / ".claude" / "settings.json"
+            settings.parent.mkdir(parents=True)
+            settings.write_text('{"permissions":{"deny":["Read(./secret.txt)"]}}\n')
+            legacy = {"module": "settings-baseline", "files": [{
+                "path": ".claude/settings.json", "mode": "merge",
+                "sha256": hashlib.sha256(settings.read_bytes()).hexdigest(),
+            }]}
+            (target / ".devkit-manifest.json").write_text(json.dumps({
+                "schema_version": 1, "installs": [legacy],
+            }))
+            result = run_installer(CODEX, "install", str(target), "codex-audit", "--allow-dirty")
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            after = json.loads((target / ".devkit-manifest.json").read_text())
+            self.assertEqual(next(i for i in after["installs"] if i["module"] == "settings-baseline"), legacy)
+            self.assertIn("Read(./secret.txt)", settings.read_text())
+
     def test_codex_module_updates_from_new_factory_commit(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)

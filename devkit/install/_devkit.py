@@ -262,7 +262,7 @@ def discover_modules() -> dict[str, dict]:
 
 
 def is_alias(name: str, mods: dict[str, dict]) -> bool:
-    return name in ALIASES and name not in mods
+    return PLATFORM == "claude" and name in ALIASES and name not in mods
 
 
 def expand_aliases(names: list[str], mods: dict[str, dict], announce: bool = True) -> list[str]:
@@ -1513,6 +1513,7 @@ def main() -> int:
     PLATFORM = args.platform
     MODULES_DIR = FACTORY / ("codex-modules" if PLATFORM == "codex" else "modules")
     if args.cmd == "readme":
+        MODULES_DIR = FACTORY / "modules"  # the generated README table lists Claude modules
         return readme(args.check)
     if args.cmd == "domains":
         return domains(args.check)
