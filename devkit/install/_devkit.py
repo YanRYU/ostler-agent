@@ -385,6 +385,17 @@ def build_install_plan(target: Path, order: list[str], mods: dict[str, dict],
                 continue
 
             src_bytes = src.read_bytes()
+            if PLATFORM == "codex" and dest_rel == ".codex/hooks.json":
+                try:
+                    hook_config = json.loads(src_bytes)
+                    events = hook_config["hooks"]
+                    if not isinstance(events, dict) or not all(
+                        isinstance(events.get(event), list) for event in ("PreToolUse", "PostToolUse")
+                    ):
+                        raise ValueError("missing PreToolUse or PostToolUse hook list")
+                except (ValueError, KeyError, TypeError) as e:
+                    plan.errors.append(f"{name}: invalid Codex hook config: {e}")
+                    continue
             src_sha = txn.sha256_bytes(src_bytes)
             merge = mode == "merge"
             want_mode = _script_mode(src)
@@ -616,6 +627,9 @@ def install(target: Path, modules: list[str], force: bool, allow_dirty: bool = F
                 print(line)
             print(f"[devkit] wrote {target}/{MANIFEST_NAME} "
                   f"(source_commit={commit}, source_dirty={str(dirty).lower()})")
+            if PLATFORM == "codex":
+                print("[devkit] Codex files installed. Trust the project .codex config layer and "
+                      "review hooks with /hooks; copied hooks are not verified active yet.")
         return None, do_commit
 
     return _two_phase(target, tx, plan_once, create_target=True)
@@ -727,8 +741,9 @@ def _outdated_locked(target: Path) -> int:
             print(f"devkit: {name} outdated (cannot read its source payload: {e})")
             continue
         if have != cur:
+            wrapper = "codex-install.sh" if PLATFORM == "codex" else "devkit-install.sh"
             print(f"devkit: {name} outdated (installed {str(have)[:8]}, source {cur[:8]}) -> "
-                  f"devkit-install.sh install {shlex.quote(str(target))} {name}")
+                  f"{wrapper} install {shlex.quote(str(target))} {name}")
     return 0
 
 

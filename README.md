@@ -2,12 +2,13 @@
 
 Ostler is a governance kit for coding agents working on real repositories. It copies a
 layered set of guardrails (permission rules, hooks that surface risky repo state,
-behavioral rules, a drift checker) into a repo's Claude Code config directory, and
+behavioral rules, a drift checker) into a repo's Claude Code or Codex config, and
 records a SHA-256 manifest so you can later prove nothing has drifted.
 
 Everything is copied, never linked: a target repo works with this clone deleted. The
 unit you install, and the unit you write yourself, is a **module** (a directory with a
-`MODULE.md` and the files it ships). The installer is `devkit/install/devkit-install.sh`.
+`MODULE.md` and the files it ships). The Claude installer is
+`devkit/install/devkit-install.sh`; the Codex installer is `devkit/install/codex-install.sh`.
 
 ## Prerequisites
 
@@ -78,6 +79,33 @@ writes a template `CLAUDE.md`, and if your repo already has one the install is r
 The hooks are copied but not wired up: add them to your settings hooks block yourself.
 `settings-baseline` merges deny/ask permission lists into your existing settings file
 and never touches your own `allow` entries.
+
+## Codex quick start
+
+Run this from the same Ostler clone, targeting a Git repository:
+
+```bash
+devkit/install/codex-install.sh install /path/to/your-repo
+devkit/install/codex-install.sh check /path/to/your-repo
+```
+
+This installs `AGENTS.md`, detailed guidance under `.agents/ostler/rules/`, command
+rules at `.codex/rules/ostler.rules`, `.codex/hooks.json` and its Python hooks, a
+starter skill under `.agents/skills/EXAMPLE-SKILL/`, and a standalone audit at
+`.codex/devkit-audit.py`. An existing unmanaged `AGENTS.md` is preserved: installation
+refuses until you choose specific modules or explicitly use `--force`.
+
+After installing, trust the repository's `.codex` config layer and review the hooks
+with `/hooks` in Codex. Copied hooks have not been verified active. The command rules
+only govern commands outside Codex's sandbox; they do not reproduce Claude Code's
+file access deny list. The hooks inspect supported tool events, so they also cannot
+cover every way a file might be written. See the [Codex hook documentation](https://learn.chatgpt.com/docs/hooks)
+and [command rules documentation](https://learn.chatgpt.com/docs/agent-configuration/rules).
+
+The two installers use separate module catalogues and one manifest and transaction
+lock. You can install both in a target repository; `check` audits all managed files.
+Use `codex-install.sh outdated`, `patch`, `remove-module`, or `recover` with the same
+argument order as the Claude installer.
 
 ## Check
 

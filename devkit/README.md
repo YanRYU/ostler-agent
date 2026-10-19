@@ -12,8 +12,10 @@ reference).
 │   ├── modules/<name>/
 │   │   ├── MODULE.md     frontmatter (name, version, layer, depends-on, payload)
 │   │   └── payload/      files copied into a target
+│   ├── codex-modules/<name>/  Codex module catalogue (same metadata contract)
 │   ├── install/
-│   │   ├── devkit-install.sh   the ONE installer (entry point)
+│   │   ├── devkit-install.sh  Claude entry point
+│   │   ├── codex-install.sh   Codex entry point
 │   │   └── _devkit.py          its implementation
 │   └── tests/
 │       ├── test-devkit-feedback.sh        the shipped test suite (see Tests)
@@ -37,6 +39,12 @@ The step-by-step guide to writing your own `modules/<name>/` is in the root `REA
 | skill-template | TEMPLATE | SKILL.md frontmatter contract + skeleton |
 | audit | VERIFIES | `devkit-audit.py` — drift and gap checker (stdlib-only; runs without PyYAML) |
 
+Codex modules live in `devkit/codex-modules/`: `codex-instructions` installs
+`AGENTS.md` and detailed rules; `codex-command-rules` installs `.codex/rules/ostler.rules`;
+`codex-hooks-core` installs `.codex/hooks.json` and branch, stash, and personal-path
+notices; `codex-skill-template` installs a starter `SKILL.md`; and `codex-audit`
+installs `.codex/devkit-audit.py`. The starter skill is an example, not an active control.
+
 ## Use
 
 ```bash
@@ -52,6 +60,13 @@ devkit/install/devkit-install.sh --check /path/to/target
 
 # Record a deliberate downstream edit you may later fold back into your factory clone or contribute upstream (patch ledger, see below):
 devkit/install/devkit-install.sh patch /path/to/target <managed-path> --reason "<why>"
+
+# Codex: use the same commands and argument order:
+devkit/install/codex-install.sh install /path/to/target-repo
+devkit/install/codex-install.sh check /path/to/target-repo
+devkit/install/codex-install.sh outdated /path/to/target-repo
+devkit/install/codex-install.sh remove-module /path/to/target-repo codex-hooks-core
+devkit/install/codex-install.sh recover /path/to/target-repo
 ```
 
 Install stamps `<target>/.devkit-manifest.json` with per-file SHA-256 and the factory's
@@ -60,6 +75,16 @@ unmanaged files without `--force`. A refused file keeps its prior manifest
 record, so a `pending-upstream` file survives a
 re-install as an exact managed-path match. A file carrying a `devkit:forked` marker is
 left alone (the target has taken ownership).
+
+The two catalogues share the target manifest, lock, and journal. Installing or
+removing a Codex module preserves Claude module records, and vice versa. `outdated`
+reports only modules from the selected catalogue; `check` audits the entire manifest.
+Codex hooks run only after project config trust and `/hooks` review. Their commands
+resolve scripts from the Git repository root, so install them into a Git repository.
+Codex command rules govern commands outside the sandbox and are not a substitute for
+Claude Code's permissions. The Codex personal-path hook inspects file edit inputs
+through `apply_patch` (including the `Edit` and `Write` matcher aliases); it does not
+cover shell redirection or arbitrary programs.
 
 ## Tests
 
@@ -87,6 +112,13 @@ config directory in your home folder and flags a repo-level `.claude` directory:
 ```bash
 bash devkit/tests/test-personal-path-guard.sh
 # expected last line:  6/6 passed
+```
+
+The Codex suite covers installation, mixed manifests, refusal, audit, hooks, and
+command rule syntax. It needs PyYAML and a `codex` executable for the rule check:
+
+```bash
+python3 -m unittest devkit.tests.test_codex_installer -v
 ```
 
 The feedback suite builds throwaway targets in a temp directory and removes them on exit; it needs
