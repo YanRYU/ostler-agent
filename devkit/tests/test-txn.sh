@@ -14,10 +14,14 @@ PYTHONDONTWRITEBYTECODE=1 python3 -m unittest -v "$REPO/devkit/tests/test_txn.py
 rc=$?
 tail -n 5 "$OUT"
 
-total=$(grep -c ' \.\.\. ' "$OUT")
-bad=$(grep -c ' \.\.\. \(FAIL\|ERROR\)$' "$OUT")
+total=$(sed -n 's/^Ran \([0-9]*\) tests\{0,1\} in .*/\1/p' "$OUT")
+total=${total:-0}
+bad=$(grep -c -E ' \.\.\. (FAIL|ERROR)$' "$OUT")
 passed=$((total - bad))
-echo "$passed/$total passed"
+skipped=$(sed -n 's/^FAILED (.*skipped=\([0-9]*\).*/\1/p; s/^OK (skipped=\([0-9]*\))/\1/p' "$OUT" | head -1)
+skipped=${skipped:-0}
+passed=$((passed - skipped))
+echo "$passed/$total passed, $skipped skipped"
 if [ "$rc" -ne 0 ] || [ "$bad" -ne 0 ] || [ "$total" -eq 0 ]; then
   echo "FAILED"
   exit 1

@@ -1,0 +1,26 @@
+{
+  "generated_from": "the kit's registry schema: domains, module-only domains, mechanisms",
+  "domains": [
+    "system-safety",
+    "secrets-privacy",
+    "git-multi-session",
+    "cost-control",
+    "work-craft",
+    "decision-gating-business",
+    "decision-gating-technical",
+    "outbound-comms",
+    "skill-governance",
+    "content-lifecycle",
+    "observe",
+    "all",
+    "template"
+  ],
+  "mechanisms": [
+    "BLOCK",
+    "ASK",
+    "DETECT",
+    "INSTRUCT",
+    "ROUTE",
+    "VERIFY"
+  ]
+}

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tests devkit/modules/hooks-core/payload/hooks/personal-path-guard.py:
+# Tests devkit/modules/secrets-privacy/payload/hooks/personal-path-guard.py:
 # only the USER-level config dir ($HOME/.claude) is exempt; a repo-level
 # .claude/ directory is a shared artifact and is checked like any other file.
 #
@@ -8,7 +8,7 @@
 set -u
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-HOOK="$REPO/devkit/modules/hooks-core/payload/hooks/personal-path-guard.py"
+HOOK="$REPO/devkit/modules/secrets-privacy/payload/hooks/personal-path-guard.py"
 
 pass=0; fail=0; total=0
 WORK=$(mktemp -d)

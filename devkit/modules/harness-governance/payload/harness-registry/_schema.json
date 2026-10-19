@@ -1,0 +1,84 @@
+{
+  "generated_by": "_devkit.py domains",
+  "schema_version": "1.0",
+  "mechanisms": {
+    "BLOCK": "can't be talked out of — settings deny; hooks that exit 2 or emit decision:\"block\"",
+    "ASK": "human gate per action — settings ask",
+    "DETECT": "surfaces invisible state, never stops the action — non-blocking hooks",
+    "INSTRUCT": "always-on prose the model follows — rules/*.md, skill doctrine",
+    "ROUTE": "thin pointer to where content lives — CLAUDE.md rows, skill descriptions",
+    "VERIFY": "computed audit of the other five — audit scripts, registries"
+  },
+  "domains": {
+    "system-safety": {
+      "letter": "A",
+      "prevents": "irreversible damage to the machine or the repository"
+    },
+    "secrets-privacy": {
+      "letter": "B",
+      "prevents": "credential and personal-data exposure"
+    },
+    "git-multi-session": {
+      "letter": "C",
+      "prevents": "parallel-session collisions, orphaned state"
+    },
+    "cost-control": {
+      "letter": "D",
+      "prevents": "runaway spend on metered services and usage quotas"
+    },
+    "work-craft": {
+      "letter": "E",
+      "prevents": "low-quality artifacts, process shortcuts"
+    },
+    "decision-gating-business": {
+      "letter": "F",
+      "prevents": "building the wrong thing (a check that each plan names its intended outcome)"
+    },
+    "decision-gating-technical": {
+      "letter": "G",
+      "prevents": "building the thing wrong (no rollback, unverified claims, false completion, an unreviewed build plan)"
+    },
+    "outbound-comms": {
+      "letter": "H",
+      "prevents": "wrong or embarrassing external sends"
+    },
+    "skill-governance": {
+      "letter": "I",
+      "prevents": "skill rot: skills that change without anyone noticing, skills that never trigger, and skills nothing checks automatically"
+    },
+    "content-lifecycle": {
+      "letter": "J",
+      "prevents": "ungoverned content accumulation: stale notes, corrections noted but never acted on, unclosed follow-ups"
+    },
+    "observe": {
+      "letter": "—",
+      "prevents": "nothing: a telemetry band, not counted among the protective domains; also a legal module domain"
+    },
+    "all": {
+      "letter": "—",
+      "prevents": "cross-cutting VERIFY and ROUTE artifacts (the audit module, the registry itself, the CLAUDE.md pointer kernel)"
+    }
+  },
+  "module_only_domains": {
+    "template": {
+      "letter": "—",
+      "prevents": "nothing: a copy-and-rename skeleton the repo owner fills in"
+    }
+  },
+  "artifact_types": [
+    "deny-rule",
+    "ask-rule",
+    "hook",
+    "rule-file",
+    "pointer",
+    "skill",
+    "agent",
+    "script"
+  ],
+  "statuses": [
+    "active",
+    "planned",
+    "deprecated",
+    "unwired"
+  ]
+}

@@ -1,7 +1,7 @@
 # Git Hygiene — Parallel Sessions, Branches, Stashes
 
-**Always-on. Applies in every repo. Surfaced by the
-`hooks-core` hooks `branch-similarity-check.sh` (PreToolUse) and `stash-leak-check.sh` (PostToolUse)
+**Always-on in the repo where this module is installed. Surfaced by the
+git-multi-session hooks `branch-similarity-check.sh` (PreToolUse) and `stash-leak-check.sh` (PostToolUse)
 once you wire them into `settings.json`.**
 
 ---

@@ -370,6 +370,7 @@ class MixedInstallTests(unittest.TestCase):
             factory = base / "factory"
             shutil.copytree(ROOT / "devkit" / "install", factory / "devkit" / "install")
             shutil.copytree(ROOT / "install" / "lib", factory / "install" / "lib")
+            shutil.copy(ROOT / "devkit" / "domains.json", factory / "devkit" / "domains.json")
             module = factory / "devkit" / "codex-modules" / "codex-instructions"
             shutil.copytree(ROOT / "devkit" / "codex-modules" / "codex-instructions", module)
             subprocess.run(["git", "init", "-q", str(factory)], check=True)
@@ -392,6 +393,7 @@ class MixedInstallTests(unittest.TestCase):
 
     def test_module_cannot_take_over_another_modules_managed_path(self) -> None:
         installer = runpy.run_path(str(ROOT / "devkit" / "install" / "_devkit.py"))
+        installer["build_install_plan"].__globals__["PLATFORM"] = "codex"
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
             target = base / "repo"
@@ -417,25 +419,40 @@ class MixedInstallTests(unittest.TestCase):
     def test_codex_wrapper_cannot_remove_claude_module(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             target = Path(tmp) / "repo"
-            first = run_installer(CLAUDE, "install", str(target), "rules-core")
+            first = run_installer(CLAUDE, "install", str(target), "git-multi-session", "--allow-dirty")
             self.assertEqual(first.returncode, 0, first.stderr)
             before = (target / ".devkit-manifest.json").read_bytes()
-            result = run_installer(CODEX, "remove-module", str(target), "rules-core")
+            result = run_installer(CODEX, "remove-module", str(target), "git-multi-session")
             self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertEqual((target / ".devkit-manifest.json").read_bytes(), before)
             self.assertTrue((target / ".claude" / "rules" / "git-hygiene.md").is_file())
+
+    def test_mixed_target_updates_only_each_platform_modules(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "repo"
+            subprocess.run(["git", "init", "-q", str(target)], check=True)
+            for wrapper, module in ((CLAUDE, "git-multi-session"),
+                                    (CODEX, "codex-command-rules")):
+                result = run_installer(wrapper, "install", str(target), module, "--allow-dirty")
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            for wrapper in (CODEX, CLAUDE):
+                result = run_installer(wrapper, "update", str(target), "--allow-dirty")
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            names = {entry["module"] for entry in json.loads(
+                (target / ".devkit-manifest.json").read_text())["installs"]}
+            self.assertEqual(names, {"git-multi-session", "codex-command-rules"})
 
     def test_end_to_end_preserves_claude_during_codex_install_and_removal(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             target = Path(tmp) / "repo"
             subprocess.run(["git", "init", "-q", str(target)], check=True)
-            claude = run_installer(CLAUDE, "install", str(target), "rules-core")
+            claude = run_installer(CLAUDE, "install", str(target), "git-multi-session", "--allow-dirty")
             self.assertEqual(claude.returncode, 0, claude.stderr)
             codex = run_installer(CODEX, "install", str(target), "--allow-dirty")
             self.assertEqual(codex.returncode, 0, codex.stderr)
             manifest = json.loads((target / ".devkit-manifest.json").read_text())
             names = {entry["module"] for entry in manifest["installs"]}
-            self.assertIn("rules-core", names)
+            self.assertIn("git-multi-session", names)
             self.assertIn("codex-hooks-core", names)
             self.assertTrue((target / ".claude" / "rules").is_dir())
             self.assertTrue((target / ".codex" / "hooks.json").is_file())
@@ -458,7 +475,7 @@ class MixedInstallTests(unittest.TestCase):
             self.assertEqual(removed.returncode, 0, removed.stderr)
             after = json.loads((target / ".devkit-manifest.json").read_text())
             names_after = {entry["module"] for entry in after["installs"]}
-            self.assertIn("rules-core", names_after)
+            self.assertIn("git-multi-session", names_after)
             self.assertNotIn("codex-hooks-core", names_after)
             self.assertFalse((target / ".codex" / "hooks.json").exists())
             self.assertTrue((target / ".claude" / "rules").is_dir())

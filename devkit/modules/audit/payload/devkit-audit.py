@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """devkit-audit — drift + enforcement-gap checker (stdlib only, self-contained).
 
-Copy-on-build (see rules/self-contained-agents.md): this script runs inside a target
-with the devkit factory deleted. It depends on nothing but the Python standard library.
+Self-contained: this script is copied into a target and runs inside it with the devkit
+source folder deleted. It depends on nothing but the Python standard library.
 
 Jobs:
   1. Drift: read <target>/.devkit-manifest.json, recompute SHA-256 of each listed
@@ -11,7 +11,13 @@ Jobs:
   2. Enforcement gaps: cross-check .claude/hooks/ `Enforces:` headers against
      .claude/rules/ (informational).
 
+  3. Board: `devkit-audit.py board [TARGET_DIR]` prints one card per installed module, rendered
+     from the manifest's per-module projection (domain, per-file mechanism, the module's
+     Prevents / Procedure / State text) plus the hook wiring found in the target's
+     .claude/settings.json.
+
 Usage: python3 devkit-audit.py [TARGET_DIR]
+       python3 devkit-audit.py board [TARGET_DIR]
   Default TARGET_DIR: the directory you run it from if it holds .devkit-manifest.json,
   else the parent of the directory containing this script (the repo root when the
   script is installed as .claude/devkit-audit.py), else the script's own directory.
@@ -140,14 +146,58 @@ def age_label(date_str: object) -> str:
     return f"({(datetime.now(timezone.utc).date() - d).days}d)"
 
 
-def classify_verdict(fpath: Path, recorded: str, ledger_entry: dict | None) -> tuple[str, bool, str | None, str]:
-    """Returns (state, fail, note, label); state is one of clean / modified-downstream / pending-upstream / pending-upstream-stale / forked / missing."""
+def merge_intact(fpath: Path, merged: dict) -> bool:
+    """A `mode: merge` file (settings.json) is shared with its owner, so it is intact when it is valid JSON
+    and every permission pattern the module recorded as its contribution is still there. Anything the
+    owner added (hooks, allow entries, other patterns) is not drift."""
+    try:
+        perms = json.loads(fpath.read_text()).get("permissions") or {}
+    except (OSError, ValueError, AttributeError):
+        return False
+    if not isinstance(perms, dict):
+        return False
+    for kind in ("deny", "ask"):
+        have = perms.get(kind)
+        if not isinstance(have, list) or not set(merged.get(kind) or []) <= set(have):
+            if merged.get(kind):
+                return False
+    return True
+
+
+BYPASS_NOTE = ('permissions.defaultMode is "bypassPermissions": every tool call would run without asking; '
+               "remove it or set a different mode")
+
+
+def permission_bypass(fpath: Path) -> str | None:
+    """A reason line when a settings file turns permission prompts off, else None. Only the permission
+    mode is inspected here: a hook that returns its own permission decision is not."""
+    try:
+        perms = json.loads(fpath.read_text()).get("permissions")
+    except (OSError, ValueError, AttributeError):
+        return None
+    if isinstance(perms, dict) and perms.get("defaultMode") == "bypassPermissions":
+        return BYPASS_NOTE
+    return None
+
+
+def classify_verdict(fpath: Path, recorded: str, ledger_entry: dict | None,
+                     merged: dict | None = None) -> tuple[str, bool, str | None, str]:
+    """Returns (state, fail, note, label); state is one of clean / modified-downstream / pending-upstream / pending-upstream-stale / forked / missing.
+
+    `merged` is the module's recorded contribution to a `mode: merge` file; when it is still all there
+    the file is clean whatever else the owner added, except a permission-bypassing `defaultMode`."""
     if not fpath.exists():
         note = "ledger entry ignored — a ledger excuses an edit, never a deletion" if ledger_entry else None
         return "missing", True, note, "missing"
     if has_fork_marker(fpath):
         note = "pending-upstream entry present on forked file (contradictory)" if ledger_entry else None
         return "forked", False, note, "forked"
+
+    if merged is not None and merge_intact(fpath, merged):
+        bypass = permission_bypass(fpath)
+        if bypass:
+            return "modified-downstream", True, bypass, "modified-downstream"
+        return "clean", False, None, "clean"
 
     cur = sha256(fpath)
     if cur == recorded:
@@ -165,8 +215,8 @@ def _feedback_dir() -> str:
     """Absolute path of the feedback-log directory, resolved when the audit runs.
 
     The log is a local JSONL record of the fixes you recorded with `patch`: review
-    it with any JSON tool, or attach it to an issue or pull request when
-    contributing a fix back to the kit.
+    it with any JSON tool, or attach it to an issue when contributing a fix
+    back to the kit (the kit takes issues, not pull requests).
 
     Self-contained on purpose (this payload is copied into target repos and must
     not import anything outside the standard library). Resolution rules:
@@ -270,7 +320,11 @@ def check_drift(target: Path) -> int:
             rel = entry.get("path", "")
             recorded = entry.get("sha256", "")
             ledger_entry = ledger_by_path.get(rel)
-            state, row_fail, note, label = classify_verdict(target / rel, recorded, ledger_entry)
+            merged = None
+            if entry.get("mode") == "merge" and isinstance(install.get("merged"), dict):
+                merged = install["merged"].get(rel)
+                merged = merged if isinstance(merged, dict) else None
+            state, row_fail, note, label = classify_verdict(target / rel, recorded, ledger_entry, merged)
             counts[state] = counts.get(state, 0) + 1
             fail = fail or row_fail
             rows.append((module, rel, state, note, label, ledger_entry))
@@ -311,14 +365,14 @@ def _scan_enforcement_gaps(hooks_dir: Path, rules_dir: Path | None,
             print(f"  ?? {hook.name}: no `Enforces:` header")
             continue
         rest = m.group(1).strip()
-        rule_m = rule_re.search(rest)
-        if rule_m:
-            rule_name = rule_m.group(1)
-            enforced_rules.add(rule_name)
-            if (rules_dir is None and report_missing_rule_dir) or (
-                rules_dir is not None and not (rules_dir / rule_name).exists()
-            ):
-                print(f"  !! {hook.name}: enforces rules/{rule_name} but that rule file is MISSING")
+        rule_names = rule_re.findall(rest)  # every rule the header names, not only the first
+        if rule_names:
+            for rule_name in dict.fromkeys(rule_names):
+                enforced_rules.add(rule_name)
+                if (rules_dir is None and report_missing_rule_dir) or (
+                    rules_dir is not None and not (rules_dir / rule_name).exists()
+                ):
+                    print(f"  !! {hook.name}: enforces rules/{rule_name} but that rule file is MISSING")
         elif none_re.match(rest):
             continue
         else:
@@ -372,6 +426,91 @@ def check_enforcement_gaps(target: Path) -> None:
             _scan_enforcement_gaps(hooks, rules if rules.is_dir() else None)
 
 
+PRINCIPLE_MECHANISMS = ("INSTRUCT", "ROUTE")
+NOT_RECORDED = "(not recorded: installed by an older devkit; re-run the install to refresh)"
+
+
+def hook_wiring(target: Path) -> dict[str, list[str]]:
+    """command text -> ["Event:matcher", ...] from the target's .claude/settings.json hooks block."""
+    wired: dict[str, list[str]] = {}
+    try:
+        settings = json.loads((target / ".claude" / "settings.json").read_text())
+        hooks = settings.get("hooks") or {}
+        for event, groups in hooks.items():
+            for group in groups or []:
+                matcher = sanitize_for_row(str(group.get("matcher") or "*"))
+                for h in group.get("hooks") or []:
+                    cmd = h.get("command")
+                    if isinstance(cmd, str):
+                        wired.setdefault(cmd, []).append(f"{sanitize_for_row(str(event))}:{matcher}")
+    except (OSError, ValueError, AttributeError, TypeError):
+        pass
+    return wired
+
+
+def _indent(text: str) -> str:
+    """Indent multi-line text, keeping its lines; control and escape characters in each line
+    are neutralized the same way as in the drift rows."""
+    return "\n".join("  " + sanitize_for_row(ln.expandtabs(4)) if ln else ""
+                     for ln in text.strip().splitlines())
+
+
+def _command_names(cmd: str, dest: str) -> bool:
+    """True when the hook command names this file on a path-segment boundary (the whole dest path,
+    or `hooks/<name>`), so `guard.sh` is not found inside `my-guard.sh`."""
+    base = dest.rsplit("/", 1)[-1]
+    for cand in (dest, "hooks/" + base):
+        if re.search(r"(?<![\w.-])" + re.escape(cand) + r"(?![\w.-])", cmd):
+            return True
+    return False
+
+
+def render_card(inst: dict, wiring: dict[str, list[str]]) -> str:
+    name = sanitize_for_row(str(inst.get("module", "?")))
+    domain = sanitize_for_row(str(inst.get("domain") or "unknown"))
+    secs = inst.get("sections") if isinstance(inst.get("sections"), dict) else {}
+    files = [f for f in inst.get("files", []) or [] if isinstance(f.get("path"), str)]
+    surfaces, principles = [], []
+    for f in files:
+        path = sanitize_for_row(f["path"])
+        mech = sanitize_for_row(str(f.get("mechanism") or "?"))
+        surfaces.append(f"{path} [{mech}]")
+        if mech in PRINCIPLE_MECHANISMS:
+            principles.append(path)
+        if "/hooks/" in "/" + f["path"]:
+            events = sorted({ev for cmd, evs in wiring.items() if _command_names(cmd, f["path"])
+                             for ev in evs})
+            surfaces.append("  wired: " + (", ".join(events) if events
+                                            else "not wired in .claude/settings.json (copied only)"))
+    def face(key: str) -> str:
+        return str(secs.get(key) or "").strip() or NOT_RECORDED
+    lines = [f"=== {name} v{sanitize_for_row(str(inst.get('version', '?')))}  domain: {domain}",
+             "purpose:", _indent(face("prevents")),
+             "surfaces:", _indent("\n".join(surfaces) or "(no files recorded)"),
+             "principles:", _indent("\n".join(principles) or "no INSTRUCT or ROUTE files in this module"),
+             "procedure:", _indent(face("procedure")),
+             "state:", _indent(face("state"))]
+    return "\n".join(lines) + "\n"
+
+
+def board(target: Path) -> int:
+    manifest_path = target / ".devkit-manifest.json"
+    if not manifest_path.exists():
+        print(f"[audit] no .devkit-manifest.json in {target} — nothing devkit-managed here.")
+        return 0
+    try:
+        manifest = json.loads(manifest_path.read_text())
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"[audit] ERROR: cannot read manifest: {e}", file=sys.stderr)
+        return 1
+    installs = [i for i in manifest.get("installs", []) or [] if isinstance(i, dict)]
+    wiring = hook_wiring(target)
+    print(f"[audit] module board: {target} ({len(installs)} module(s) installed)\n")
+    for inst in installs:
+        print(render_card(inst, wiring))
+    return 0
+
+
 def _default_target() -> Path:
     """No argument: audit the repo root, i.e. the directory holding the manifest.
     Tried in order: the current directory, the parent of this script's directory
@@ -384,6 +523,12 @@ def _default_target() -> Path:
 
 
 def main(argv: list[str]) -> int:
+    if len(argv) > 1 and argv[1] == "board":
+        target = Path(argv[2]).expanduser().resolve() if len(argv) > 2 else _default_target()
+        if not target.is_dir():
+            print(f"[audit] ERROR: not a directory: {target}", file=sys.stderr)
+            return 1
+        return board(target)
     target = Path(argv[1]).expanduser().resolve() if len(argv) > 1 else _default_target()
     if not target.is_dir():
         print(f"[audit] ERROR: not a directory: {target}", file=sys.stderr)

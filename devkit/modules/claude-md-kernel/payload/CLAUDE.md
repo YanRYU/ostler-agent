@@ -1,7 +1,7 @@
 # {maintainer or team} — {agent-name}
 
 This agent {one-line: what it builds/maintains/decides}. This file names the agent and points to the files that hold
-its rules, so each rule is written down once (see `.claude/rules/self-contained-agents.md`).
+its rules, so each rule is written down once and this file only points to it.
 
 ---
 
@@ -16,7 +16,7 @@ its rules, so each rule is written down once (see `.claude/rules/self-contained-
 Each rule is one line; the detail lives in whatever enforces it.
 
 - Do not run destructive shell or git commands, or touch system and secret-store paths — enforced by the `settings.json` deny list
-- Ask before sudo, curl/wget, git push, or publishing packages — enforced by `settings.json` ask gates
+- {Optional: commands that need your confirmation first, e.g. sudo or network downloads; else delete this bullet} — enforced by the `ask` list in `settings.json`, if you configure one
 - Never commit .env files, credentials or keys — enforced by this file
 - {Optional: who approves settings.json changes, and how; else delete this bullet} — enforced by this file
 - {Optional: extra git rule; see `.claude/rules/git-hygiene.md`; else delete this bullet} — enforced by `.claude/rules/git-hygiene.md`
@@ -25,8 +25,8 @@ Each rule is one line; the detail lives in whatever enforces it.
 ## 3. Where the rules live
 
 - Git hygiene (branches, stashes, parallel sessions) → `.claude/rules/git-hygiene.md`
-- Plan format + complexity-scaled gates → `.claude/rules/plan-writing.md`
-- Agents ship self-contained; copy-on-build → `.claude/rules/self-contained-agents.md`
+- {Optional: how plans are written, if you install the plan-writing rule; else delete this bullet} → `.claude/rules/plan-writing.md`
+- {Optional: if this repo builds other agents, how they are packaged (e.g. copied in rather than referenced at runtime); else delete this bullet} → `.claude/rules/self-contained-agents.md`
 - Privacy: no personal absolute paths in shared artifacts → `.claude/rules/privacy.md`
 
 ## 4. Which skill to load

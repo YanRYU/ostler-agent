@@ -8,7 +8,7 @@ allowed-tools:
 # {Skill Name}
 
 ## What it does
-{One paragraph: the capability this skill provides — knowledge/method, not execution.}
+{One paragraph: the capability this skill provides (under this template's convention: knowledge and method, with execution in scripts it calls; adapt to your repo).}
 
 ## When to use
 - {trigger 1}
@@ -19,4 +19,4 @@ allowed-tools:
 2. {step}
 
 ## Do NOT
-- {anti-pattern — e.g. do not put orchestration logic here; a skill describes a method and does not run anything}
+- {anti-pattern — e.g. under this template's convention, do not put orchestration logic here; keep it in scripts or tools the skill calls}

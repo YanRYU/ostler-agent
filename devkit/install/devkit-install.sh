@@ -8,11 +8,15 @@
 #                                                  all-or-nothing: a refusal writes nothing;
 #                                                  files dropped from a selected module upstream
 #                                                  are pruned; a dirty factory needs --allow-dirty
+#   devkit-install.sh update  <target> [module ...] [--force] [--allow-dirty]
+#                                                  install over the modules the manifest records; migrates
+#                                                  1.x records to 2.0 in the same transaction
 #   devkit-install.sh check   <target>
 #   devkit-install.sh --check <target>            # alias for: check <target>
 #   devkit-install.sh patch   <target> <path> --reason "<why you made this edit>"
 #                                                  record a downstream edit as pending-upstream
-#   devkit-install.sh outdated <target>           one line per installed module whose source changed
+#   devkit-install.sh outdated <target> [module ...]
+#                                                  one line per installed module whose source changed
 #   devkit-install.sh remove-module <target> <name> [--force]
 #                                                  remove a module's clean files and its record
 #   devkit-install.sh recover <target>             finish/roll back an interrupted install

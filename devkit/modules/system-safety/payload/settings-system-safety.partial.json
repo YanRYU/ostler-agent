@@ -2,11 +2,6 @@
   "permissions": {
     "allow": [],
     "deny": [
-      "Read(./.env)",
-      "Read(./.env.*)",
-      "Read(./secrets/**)",
-      "Write(./.env)",
-      "Write(./.env.*)",
       "Bash(rm :*)",
       "Bash(rm -r :*)",
       "Bash(rm -f :*)",
