@@ -2,13 +2,14 @@
 
 Ostler is a governance kit for coding agents working on real repositories. It copies a
 layered set of guardrails (permission rules, hooks that surface or stop risky actions,
-behavioral rules, a drift checker, a self-audit) into a repo's Claude Code config directory,
+behavioral rules, a drift checker, a self-audit) into a repo's Claude Code or Codex config,
 and records a SHA-256 manifest so you can later prove nothing has drifted.
 
 Everything is copied, never linked: a target repo works with this clone deleted. The unit
 you install, and the unit you write yourself, is a **module** (a directory with a
-`MODULE.md` and the files it ships). The installer is `devkit/install/devkit-install.sh`.
-This is kit 2.0: modules are grouped by what they protect (see "Modules and domains").
+`MODULE.md` and the files it ships). Use `devkit/install/devkit-install.sh` for Claude Code
+or `devkit/install/codex-install.sh` for Codex. Kit 2.0 groups modules by what they protect
+(see "Modules and domains").
 
 ## Prerequisites
 
@@ -231,6 +232,36 @@ In a live session the plan text is usually not in the tool input, so in both mod
 Claude Code wrote (the last plans-folder markdown file the session transcript shows being written or edited).
 If you see nothing at all, the hook is not wired (check the JSON above is in the settings file
 in your target's `.claude` folder) or `jq` is missing.
+
+## Codex quick start
+
+Run this from the same Ostler clone, targeting the root of a Git repository. The
+hooks module refuses a plain directory or a subdirectory of a repository:
+
+```bash
+devkit/install/codex-install.sh install /path/to/your-repo
+devkit/install/codex-install.sh check /path/to/your-repo
+```
+
+This installs `AGENTS.md`, detailed guidance under `.agents/ostler/rules/`, command
+rules at `.codex/rules/ostler.rules`, `.codex/hooks.json` and its Python hooks, a
+starter skill under `.agents/ostler/templates/EXAMPLE-SKILL/`, and a standalone audit at
+`.codex/devkit-audit.py`. An existing unmanaged `AGENTS.md` is preserved: installation
+refuses until you choose specific modules or explicitly use `--force`.
+Copy and customize the starter skill into `.agents/skills/` when you want Codex to discover it.
+
+After installing, trust the repository's `.codex` config layer and review the hooks
+with `/hooks` in Codex. Copied hooks have not been verified active. The command rules
+only govern commands outside Codex's sandbox and match command prefixes rather than
+every shell spelling; they do not reproduce Claude Code's file access deny list.
+The hooks inspect supported tool events, so they also cannot
+cover every way a file might be written. See the [Codex hook documentation](https://learn.chatgpt.com/docs/hooks)
+and [command rules documentation](https://learn.chatgpt.com/docs/agent-configuration/rules).
+
+The two installers use separate module catalogues and one manifest and transaction
+lock. You can install both in a target repository; `check` audits all managed files.
+Use `codex-install.sh outdated`, `patch`, `remove-module`, or `recover` with the same
+argument order as the Claude installer.
 
 ## Check
 

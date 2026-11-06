@@ -12,8 +12,10 @@ reference).
 │   ├── modules/<name>/
 │   │   ├── MODULE.md     frontmatter (name, version, domain, depends-on, payload)
 │   │   └── payload/      files copied into a target
+│   ├── codex-modules/<name>/  Codex module catalogue (same metadata contract)
 │   ├── install/
-│   │   ├── devkit-install.sh   the ONE installer (entry point)
+│   │   ├── devkit-install.sh  Claude entry point
+│   │   ├── codex-install.sh   Codex entry point
 │   │   └── _devkit.py          its implementation
 │   └── tests/
 │       ├── test-devkit-feedback.sh        the shipped test suite (see Tests)
@@ -56,6 +58,13 @@ the test suite fails when it is edited by hand.
 | work-craft | 2.1.6 | work-craft | INSTRUCT | Low-quality work and process shortcuts: plans nobody can follow, agents that only work on one machine, work declared done without evidence, and reports that bury the answer. |
 <!-- devkit:modules:end -->
 
+Codex modules live in `devkit/codex-modules/`: `codex-instructions` installs
+`AGENTS.md` and detailed rules; `codex-command-rules` installs `.codex/rules/ostler.rules`;
+`codex-hooks-core` installs `.codex/hooks.json` and branch, stash, and personal-path
+notices; `codex-skill-template` installs a starter `SKILL.md`; and `codex-audit`
+installs `.codex/devkit-audit.py`. The starter skill stays outside Codex's skill
+discovery path until copied into `.agents/skills/` and customized.
+
 ## Use
 
 ```bash
@@ -74,6 +83,13 @@ devkit/install/devkit-install.sh --check /path/to/target
 
 # Record a deliberate downstream edit you may later fold back into your factory clone or contribute upstream (patch ledger, see below):
 devkit/install/devkit-install.sh patch /path/to/target <managed-path> --reason "<why>"
+
+# Codex: use the same commands and argument order:
+devkit/install/codex-install.sh install /path/to/target-repo
+devkit/install/codex-install.sh check /path/to/target-repo
+devkit/install/codex-install.sh outdated /path/to/target-repo
+devkit/install/codex-install.sh remove-module /path/to/target-repo codex-hooks-core
+devkit/install/codex-install.sh recover /path/to/target-repo
 ```
 
 Install stamps `<target>/.devkit-manifest.json` with per-file SHA-256 and the factory's
@@ -82,6 +98,21 @@ unmanaged files without `--force`. A refused file keeps its prior manifest
 record, so a `pending-upstream` file survives a
 re-install as an exact managed-path match. A file carrying a `devkit:forked` marker is
 left alone (the target has taken ownership).
+
+The two catalogues share the target manifest, lock, and journal. Installing or
+removing a Codex module preserves Claude module records, and vice versa. `outdated`
+reports only modules from the selected catalogue; `check` audits the entire manifest.
+Codex hooks run only after project config trust and `/hooks` review. Their commands
+resolve scripts from the Git repository root; installing `codex-hooks-core` requires
+the target to be that root. If Git or a hook script later becomes unavailable, the
+hook command exits without blocking Codex.
+Codex command rules govern commands outside the sandbox and are not a substitute for
+Claude Code's permissions. They match exact command prefixes, so alternate flags,
+paths, and shell wrappers may need separate review. The Codex personal-path hook inspects file edit inputs
+through `apply_patch` (including the `Edit` and `Write` matcher aliases); it does not
+cover shell redirection or arbitrary programs.
+The manifest-wide `source_commit` and `source_dirty` fields describe the latest
+installer run; per-module fingerprints track each installed module's version.
 
 ## Tests
 
@@ -109,6 +140,13 @@ config directory in your home folder and flags a repo-level `.claude` directory:
 ```bash
 bash devkit/tests/test-personal-path-guard.sh
 # expected last line:  6/6 passed
+```
+
+The Codex suite covers installation, mixed manifests, refusal, audit, hooks, and
+command rule syntax. It needs PyYAML and a `codex` executable for the rule check:
+
+```bash
+python3 -m unittest devkit.tests.test_codex_installer -v
 ```
 
 `devkit/tests/test-contract-v2.sh` runs `devkit/tests/test_contract_v2.py`: the `MODULE.md` contract

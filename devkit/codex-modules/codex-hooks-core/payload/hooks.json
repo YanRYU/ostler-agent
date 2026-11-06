@@ -1,0 +1,38 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "root=\"$(git rev-parse --show-toplevel 2>/dev/null)\"; if [ -n \"$root\" ] && [ -f \"$root/.codex/hooks/branch_similarity.py\" ]; then python3 \"$root/.codex/hooks/branch_similarity.py\"; fi",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "^(apply_patch|Edit|Write)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "root=\"$(git rev-parse --show-toplevel 2>/dev/null)\"; if [ -n \"$root\" ] && [ -f \"$root/.codex/hooks/personal_path_guard.py\" ]; then python3 \"$root/.codex/hooks/personal_path_guard.py\"; fi",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "root=\"$(git rev-parse --show-toplevel 2>/dev/null)\"; if [ -n \"$root\" ] && [ -f \"$root/.codex/hooks/stash_leak.py\" ]; then python3 \"$root/.codex/hooks/stash_leak.py\"; fi",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
